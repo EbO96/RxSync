@@ -27,6 +27,32 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <Button
+        android:id="@+id/abortButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ABORT" />
+
+    <Button
+        android:id="@+id/resumeButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="RESUME" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="@android:style/Widget.Material.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="false"
+        android:progress="0" />
+
+    <TextView
+        android:id="@+id/progressPercentTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0%" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
