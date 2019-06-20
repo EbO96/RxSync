@@ -7,13 +7,13 @@ import pl.ebo96.rxsyncexample.sync.RxModule
 import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
-class ExampleModule(private val lifecycle: RxExecutor.Lifecycle) : ModuleBuilder<Any>(lifecycle) {
+class ExampleModule(lifecycle: RxExecutor.Lifecycle) : ModuleBuilder<Any>(lifecycle) {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<Any> {
         return builder
                 .scheduler(Schedulers.computation())
                 .also { builder1 ->
-                    (1..1000).forEach { index ->
+                    (1..100).forEach { index ->
                         builder1.register(buildMethod(false, index))
                     }
                 }
@@ -22,8 +22,8 @@ class ExampleModule(private val lifecycle: RxExecutor.Lifecycle) : ModuleBuilder
 
     private fun <T : Any> buildMethod(async: Boolean, returnObject: T): RxMethod<T> {
         return RxMethod.create<T>(async).registerOperation(Observable.create {
-            if (returnObject == 100) {
-                throw Throwable("This is error")
+            if (returnObject == 50 || returnObject == 76) {
+                throw Throwable("This is error ${System.currentTimeMillis()}")
             }
             it.onNext(returnObject)
             it.onComplete()

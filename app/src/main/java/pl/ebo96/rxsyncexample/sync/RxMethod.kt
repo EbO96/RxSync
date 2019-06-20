@@ -5,6 +5,7 @@ import io.reactivex.Observable
 import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
+import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
@@ -53,7 +54,25 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         }
 
         this.operation = when (retryAttempts > 0) {
-            true -> this.operation.retry(retryAttempts).onErrorResumeNext(::handleFatalError)
+            true -> this.operation
+                    .compose {
+                        it.retry { attempts, error ->
+                            attempts < 3
+                        }
+                    }
+                    .retryWhen { observable ->
+                        observable.flatMap {
+                            handleFatalError(it)
+                        }
+                    }
+                    .onErrorResumeNext(Function { error ->
+                        if (error is Abort) {
+                            Observable.error(error)
+                        } else {
+                            Observable.empty<T>()
+                        }
+                    })
+
             else -> this.operation
         }
 
@@ -64,15 +83,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     @Suppress("UNCHECKED_CAST")
     private fun handleFatalError(error: Throwable): Observable<out T> = Observable.create<T> { emitter ->
-        val userDecision = Consumer<ErrorEvent> { event ->
+        val userDecision = Consumer<Event> { event ->
             if (!emitter.isDisposed) {
-                if (event.resume) {
-                    emitter.onNext((event.with ?: SyncResume()) as T)
-                    emitter.onComplete()
-                } else {
-                    emitter.onError(error)
-                    emitter.onComplete()
+                when (event) {
+                    Event.NEXT -> emitter.onError(error)
+                    Event.RETRY -> emitter.onNext(Any() as T)
+                    Event.CANCEL -> emitter.onError(Abort(error.message))
                 }
+                emitter.onComplete()
             }
         }
 
@@ -80,6 +98,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }.subscribeOn(AndroidSchedulers.mainThread())
 
     class SyncResume
+
+    class Abort(message: String? = "") : Throwable(message)
+
+    sealed class Event {
+        object CANCEL : Event()
+        object NEXT : Event()
+        object RETRY : Event()
+    }
 
     companion object {
 

@@ -2,7 +2,7 @@ package pl.ebo96.rxsyncexample.sync.executor
 
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
-import pl.ebo96.rxsyncexample.sync.ErrorEvent
+import pl.ebo96.rxsyncexample.sync.RxMethod
 import pl.ebo96.rxsyncexample.sync.RxModule
 import pl.ebo96.rxsyncexample.sync.RxProgress
 import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
@@ -35,7 +35,7 @@ class RxExecutor<T : Any> private constructor(
     }
 
     interface Lifecycle {
-        fun cannotRetry(error: Throwable, decision: Consumer<ErrorEvent>)
+        fun cannotRetry(error: Throwable, decision: Consumer<RxMethod.Event>)
     }
 
     class Builder<T : Any> {

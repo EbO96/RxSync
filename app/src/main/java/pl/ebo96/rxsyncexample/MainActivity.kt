@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.activity_main.*
-import pl.ebo96.rxsyncexample.sync.ErrorEvent
+import pl.ebo96.rxsyncexample.sync.RxMethod
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
 class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
@@ -51,14 +51,18 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
 //        }
     }
 
-    override fun cannotRetry(error: Throwable, decision: Consumer<ErrorEvent>) {
+    override fun cannotRetry(error: Throwable, decision: Consumer<RxMethod.Event>) {
         setResultOnTextView(error.message ?: "Error")
-        resumeButton.setOnClickListener {
-            decision.accept(ErrorEvent(true, null))
+        retryButton.setOnClickListener {
+            decision.accept(RxMethod.Event.RETRY)
         }
 
-        abortButton.setOnClickListener {
-            decision.accept(ErrorEvent(false, null))
+        nextButton.setOnClickListener {
+            decision.accept(RxMethod.Event.NEXT)
+        }
+
+        cancelButton.setOnClickListener {
+            decision.accept(RxMethod.Event.CANCEL)
         }
     }
 

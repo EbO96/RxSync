@@ -28,16 +28,22 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/abortButton"
+        android:id="@+id/nextButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="ABORT" />
+        android:text="NEXT" />
 
     <Button
-        android:id="@+id/resumeButton"
+        android:id="@+id/retryButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="RESUME" />
+        android:text="RETRY" />
+
+    <Button
+        android:id="@+id/cancelButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CANCEL" />
 
     <ProgressBar
         android:id="@+id/progressBar"
