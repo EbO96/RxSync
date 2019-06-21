@@ -3,6 +3,7 @@ package pl.ebo96.rxsyncexample.sync
 import android.annotation.SuppressLint
 import android.util.Log
 import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
@@ -10,16 +11,14 @@ import pl.ebo96.rxsyncexample.sync.executor.RxMethodsExecutor
 
 class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long) {
 
-    var lifecycle: RxExecutor.Lifecycle? = null
+    var rxEvent: RxExecutor.RxEvent? = null
 
-    var id = RxExecutor.Helper.numberOfMethods.incrementAndGet()
+    var id = 1 //TODO
 
     lateinit var operation: Observable<out T>
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
-        this.operation = prepareOperation(operation).doAfterNext {
-            RxExecutor.Helper.doneMethods[id] = id
-        }
+        this.operation = prepareOperation(operation)
         return this
     }
 
@@ -41,24 +40,25 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
                     observable.flatMap { error ->
                         Observable.create<T> { emitter ->
                             Log.d(RxExecutor.TAG, "______________________________________________________________")
-                            if (lifecycle == null) {
+                            if (rxEvent == null) {
                                 emitter.onError(error)
                                 emitter.onComplete()
                                 return@create
                             }
 
-                            if (!emitter.isDisposed) {
-                                val userDecision = Consumer<Event> { event ->
+                            val event = Consumer<Event> { event ->
+                                if (!emitter.isDisposed) {
                                     @Suppress("UNCHECKED_CAST")
                                     when (event) {
                                         Event.NEXT -> emitter.onError(error)
                                         Event.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
                                         Event.CANCEL -> emitter.onError(Abort(error.message))
                                     }
+                                    emitter.onComplete()
                                 }
-                                lifecycle?.cannotRetry(error, userDecision)
                             }
-                        }
+                            rxEvent?.onEvent(error, event)
+                        }.subscribeOn(AndroidSchedulers.mainThread())
                     }
                 }
                 .onErrorResumeNext(Function { error ->

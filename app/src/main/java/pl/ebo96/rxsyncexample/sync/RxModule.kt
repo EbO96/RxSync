@@ -10,7 +10,7 @@ class RxModule<T : Any> private constructor(private val rxMethodsExecutor: RxMet
         return rxMethodsExecutor.prepare()
     }
 
-    class Builder<T : Any>(private val lifecycle: RxExecutor.Lifecycle?) {
+    class Builder<T : Any>(private val rxEvent: RxExecutor.RxEvent?) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
 
@@ -21,13 +21,13 @@ class RxModule<T : Any> private constructor(private val rxMethodsExecutor: RxMet
 
         private fun addLifecycleToMethods() {
             rxMethods.forEach {
-                it.lifecycle = lifecycle
+                it.rxEvent = rxEvent
             }
         }
 
         fun build(): RxModule<T> {
             addLifecycleToMethods()
-            return RxModule(RxMethodsExecutor(rxMethods, lifecycle))
+            return RxModule(RxMethodsExecutor(rxMethods, rxEvent))
         }
     }
 }

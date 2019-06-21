@@ -8,7 +8,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsyncexample.sync.RxMethod
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
-class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
+class MainActivity : AppCompatActivity(), RxExecutor.RxEvent {
 
     private lateinit var rxExecutor: RxExecutor<Any>
 
@@ -17,6 +17,7 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
         setContentView(R.layout.activity_main)
 
         rxExecutor = RxExecutor.Builder<Any>()
+                .register(ExampleModule2())
                 .register(ExampleModule(this))
                 .setProgressHandler(Consumer {
                     progressBar.max = it.total
@@ -39,32 +40,20 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
             clearUi()
             rxExecutor.stop()
         }
-
-//        val pauseSignal = Observable.create<Boolean> { emitter ->
-//            pauseButton.setOnClickListener {
-//                emitter.onNext(true)
-//            }
-//        }
-//
-//        val resumeSignal = Observable.create<Boolean> { emitter ->
-//            resumeButton.setOnClickListener {
-//                emitter.onNext(true)
-//            }
-//        }
     }
 
-    override fun cannotRetry(error: Throwable, decision: Consumer<RxMethod.Event>) {
-        //  setResultOnTextView(error.message ?: "Error")
+    override fun onEvent(error: Throwable, event: Consumer<RxMethod.Event>) {
+        setResultOnTextView(error.message ?: "Error")
         retryButton.setOnClickListener {
-            decision.accept(RxMethod.Event.RETRY)
+            event.accept(RxMethod.Event.RETRY)
         }
 
         nextButton.setOnClickListener {
-            decision.accept(RxMethod.Event.NEXT)
+            event.accept(RxMethod.Event.NEXT)
         }
 
         cancelButton.setOnClickListener {
-            decision.accept(RxMethod.Event.CANCEL)
+            event.accept(RxMethod.Event.CANCEL)
         }
     }
 
@@ -76,7 +65,7 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
     }
 
     private fun setResultOnTextView(text: String) {
-        resultTextView.text = "$text\n----------------------------"
+        resultTextView.text = "${resultTextView.text}\n$text\n----------------------------"
         Log.d(RxExecutor.TAG, text)
     }
 }

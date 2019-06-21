@@ -8,9 +8,20 @@ import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
 class ExampleModule2 : ModuleBuilder<String>(null) {
 
     override fun build(builder: RxModule.Builder<String>): RxModule<String> {
-        return builder.register(
-                RxMethod.create<String>(true).registerOperation(Observable.just("Hello From ${this.javaClass.simpleName}"))
-        ).build()
+        return builder
+                .register(
+                        RxMethod.create<String>(true).registerOperation(Observable.just("Hello 1 From ${this.javaClass.simpleName}"))
+                )
+                .register(
+                        RxMethod.create<String>(false).registerOperation(Observable.just("Hello 2 From ${this.javaClass.simpleName}"))
+                )
+                .register(
+                        RxMethod.create<String>(true).registerOperation(Observable.just("Hello 3 From ${this.javaClass.simpleName}"))
+                )
+                .register(
+                        RxMethod.create<String>(false).registerOperation(Observable.just("Hello 4 From ${this.javaClass.simpleName}"))
+                )
+                .build()
     }
 
 }

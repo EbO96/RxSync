@@ -1,7 +1,6 @@
 package pl.ebo96.rxsyncexample.sync.executor
 
-import io.reactivex.Observable
-import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
 import io.reactivex.schedulers.Schedulers
@@ -23,36 +22,40 @@ class RxExecutor<T : Any> private constructor(
         private val progressHandler: Consumer<RxProgress>?
 ) {
 
+    private var compositeDisposable = CompositeDisposable()
+
+    private val doneMethods = ConcurrentHashMap<Int, Int>()
+
+    private val numberOfMethods: AtomicInteger = AtomicInteger()
+
     init {
-        RxJavaPlugins.setErrorHandler(onError())
+        RxJavaPlugins.setErrorHandler(errorHandler)
     }
 
     fun start() {
-        rxModulesExecutor.execute(onProgress(), onError())
+        val disposable = rxModulesExecutor.execute()
+                .doOnEach {
+                    //TODO check and update number of all methods and done methods
+                }
+                .subscribe(Consumer {
+                    progressHandler?.accept(
+                            RxProgress(
+                                    doneMethods.size,
+                                    numberOfMethods.get(),
+                                    it
+                            )
+                    )
+                }, errorHandler)
+
+        compositeDisposable.add(disposable)
     }
 
     fun stop() {
-        rxModulesExecutor.abort()
+        compositeDisposable.clear()
     }
 
-    private fun onError(): Consumer<Throwable> = Consumer { error ->
-        errorHandler.also { consumer ->
-            onUi {
-                consumer.accept(error)
-            }
-        }
-    }
-
-    private fun onProgress(): Consumer<RxProgress> = Consumer { progress ->
-        progressHandler?.also { consumer ->
-            onUi {
-                consumer.accept(progress)
-            }
-        }
-    }
-
-    interface Lifecycle {
-        fun cannotRetry(error: Throwable, decision: Consumer<RxMethod.Event>)
+    interface RxEvent {
+        fun onEvent(error: Throwable, event: Consumer<RxMethod.Event>)
     }
 
     class Builder<T : Any> {
@@ -81,25 +84,11 @@ class RxExecutor<T : Any> private constructor(
         }
     }
 
-    object Helper {
-
-        val doneMethods = ConcurrentHashMap<Int, Int>()
-
-        val numberOfMethods: AtomicInteger = AtomicInteger()
-    }
-
     companion object {
 
         const val TAG = "rxexecutor"
 
         private val processors = (Runtime.getRuntime().availableProcessors() / 2) + 1
         val SCHEDULER = Schedulers.from(Executors.newFixedThreadPool(processors))
-    }
-
-    private fun onUi(processCode: () -> Unit) {
-        Observable.empty<Unit>()
-                .observeOn(AndroidSchedulers.mainThread())
-                .doOnComplete { processCode() }
-                .subscribe()
     }
 }

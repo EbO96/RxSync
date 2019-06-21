@@ -1,42 +1,31 @@
 package pl.ebo96.rxsyncexample.sync.executor
 
+import android.util.Log
 import io.reactivex.Observable
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.functions.Consumer
+import io.reactivex.android.schedulers.AndroidSchedulers
 import pl.ebo96.rxsyncexample.sync.RxModule
-import pl.ebo96.rxsyncexample.sync.RxProgress
 import java.util.*
 
 class RxModulesExecutor<T : Any> constructor(private val rxModules: ArrayList<RxModule<out T>>) {
 
-    private var compositeDisposable = CompositeDisposable()
-
-    fun execute(progressHandler: Consumer<RxProgress>?, errorHandler: Consumer<Throwable>) {
+    fun execute(): Observable<T> {
         val modulesMethodsAsObservable = rxModules.map {
-            it.prepareMethods()
+            Observable.just(it)
         }
 
-        val disposable = Observable.concat(modulesMethodsAsObservable)
-                .doOnEach {
-                    if (!it.isOnError) {
-                        progressHandler?.accept(
-                                RxProgress(
-                                        RxExecutor.Helper.doneMethods.size,
-                                        RxExecutor.Helper.numberOfMethods.get(),
-                                        it.value
-                                )
-                        )
-                    }
+        return Observable.concat(modulesMethodsAsObservable)
+                .concatMapEager { module ->
+                    module.prepareMethods()
                 }
-                .subscribe(Consumer {
-                    /* DO NOTHING */
-                }, errorHandler)
+                .subscribeOn(RxExecutor.SCHEDULER)
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnSubscribe {
+                    Log.d(RxExecutor.TAG, "SUBSCRIBED")
+                }
+                .doOnEach {
+                    Log.d(RxExecutor.TAG, "onEach")
+                    //TODO update total methods size
+                }
 
-        compositeDisposable.add(disposable)
-    }
-
-    fun abort() {
-//        compositeDisposable.dispose() //TODO or dispose
-        compositeDisposable.clear() //TODO or dispose
     }
 }

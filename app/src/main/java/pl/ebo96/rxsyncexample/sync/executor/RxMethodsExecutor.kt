@@ -2,12 +2,13 @@ package pl.ebo96.rxsyncexample.sync.executor
 
 import android.util.Log
 import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
 import pl.ebo96.rxsyncexample.sync.RxMethod
 
 class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>,
-                                 private val lifecycle: RxExecutor.Lifecycle?) {
+                                 private val rxEvent: RxExecutor.RxEvent?) {
 
     fun prepare(): Observable<out T> {
         val methodsGroups: Map<Boolean, List<RxMethod<out T>>> = methods.groupBy { it.async }
@@ -26,14 +27,14 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
                     it.flatMap { error ->
                         Observable.create<T> { emitter ->
                             Log.d(RxExecutor.TAG, "______________________________________________________________")
-                            if (lifecycle == null) {
+                            if (rxEvent == null) {
                                 emitter.onError(error)
                                 emitter.onComplete()
                                 return@create
                             }
 
-                            if (!emitter.isDisposed) {
-                                val event = Consumer<RxMethod.Event> { event ->
+                            val event = Consumer<RxMethod.Event> { event ->
+                                if (!emitter.isDisposed) {
                                     @Suppress("UNCHECKED_CAST")
                                     when (event) {
                                         RxMethod.Event.NEXT -> emitter.onError(error)
@@ -42,9 +43,9 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
                                     }
                                     emitter.onComplete()
                                 }
-                                lifecycle.cannotRetry(error, event)
                             }
-                        }
+                            rxEvent.onEvent(error, event)
+                        }.subscribeOn(AndroidSchedulers.mainThread())
                     }
                 }
                 .onErrorResumeNext(Function {
@@ -58,11 +59,7 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
         val mergedSyncMethods = Observable.concat(syncMethods)
                 .subscribeOn(RxExecutor.SCHEDULER)
 
-        return Observable.concat(mergedSyncMethods, mergedAsyncMethods).doOnSubscribe {
-            Log.d(RxExecutor.TAG, "subscribed")
-            RxExecutor.Helper.doneMethods.clear()
-            RxExecutor.Helper.numberOfMethods.set(asyncMethods.size + syncMethods.size)
-        }
+        return Observable.concat(mergedSyncMethods, mergedAsyncMethods)
     }
 
     class RetryEvent
