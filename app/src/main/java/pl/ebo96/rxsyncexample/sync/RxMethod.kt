@@ -1,103 +1,81 @@
 package pl.ebo96.rxsyncexample.sync
 
 import android.annotation.SuppressLint
+import android.util.Log
 import io.reactivex.Observable
-import io.reactivex.Scheduler
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
-import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
+import pl.ebo96.rxsyncexample.sync.executor.RxMethodsExecutor
 
-class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long, private val scheduler: Scheduler) {
-
-    val id = RxExecutor.Helper.numberOfMethods
+class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long) {
 
     var lifecycle: RxExecutor.Lifecycle? = null
 
-    init {
-        RxExecutor.Helper.numberOfMethods++
-    }
+    var id = RxExecutor.Helper.numberOfMethods.incrementAndGet()
 
-    private lateinit var operation: Observable<T>
+    lateinit var operation: Observable<out T>
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
-        this.operation = operation
-        return this
-    }
-
-    fun join(operation: (T) -> RxMethod<out T>): RxMethod<T> {
-        this.operation = this.operation.flatMap { operation(it).start() }
-        return this
-    }
-
-    fun modifyResult(map: (T) -> T): RxMethod<out T> {
-        operation = operation.flatMap {
-            Observable.just(map(it))
-        }
-        return this
-    }
-
-    fun doSomethingWithResult(modify: (T) -> Unit): RxMethod<T> {
-        operation = operation.flatMap {
-            modify(it)
-            Observable.just(it)
+        this.operation = prepareOperation(operation).doAfterNext {
+            RxExecutor.Helper.doneMethods[id] = id
         }
         return this
     }
 
     @SuppressLint("CheckResult")
-    fun start(): Observable<out T> {
-        this.operation = when (async) {
-            true -> operation.subscribeOn(scheduler)
-            else -> operation
+    private fun prepareOperation(operation: Observable<T>): Observable<out T> {
+        return if (async) {
+            prepareAsyncOperation(operation)
+        } else {
+            prepareSyncOperation(operation)
         }
-
-        this.operation = when (retryAttempts > 0) {
-            true -> this.operation
-                    .compose {
-                        it.retry { attempts, error ->
-                            attempts < 3
-                        }
-                    }
-                    .retryWhen { observable ->
-                        observable.flatMap {
-                            handleFatalError(it)
-                        }
-                    }
-                    .onErrorResumeNext(Function { error ->
-                        if (error is Abort) {
-                            Observable.error(error)
-                        } else {
-                            Observable.empty<T>()
-                        }
-                    })
-
-            else -> this.operation
-        }
-
-        this.operation = this.operation.observeOn(AndroidSchedulers.mainThread())
-
-        return operation
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun handleFatalError(error: Throwable): Observable<out T> = Observable.create<T> { emitter ->
-        val userDecision = Consumer<Event> { event ->
-            if (!emitter.isDisposed) {
-                when (event) {
-                    Event.NEXT -> emitter.onError(error)
-                    Event.RETRY -> emitter.onNext(Any() as T)
-                    Event.CANCEL -> emitter.onError(Abort(error.message))
+    private fun prepareSyncOperation(operation: Observable<T>): Observable<T> {
+        return operation
+                .retry { attempts, error ->
+                    Log.d(RxExecutor.TAG, "retry sync -> $attempts, ${error.message}")
+                    attempts < retryAttempts
+                }.retryWhen { observable ->
+                    observable.flatMap { error ->
+                        Observable.create<T> { emitter ->
+                            Log.d(RxExecutor.TAG, "______________________________________________________________")
+                            if (lifecycle == null) {
+                                emitter.onError(error)
+                                emitter.onComplete()
+                                return@create
+                            }
+
+                            if (!emitter.isDisposed) {
+                                val userDecision = Consumer<Event> { event ->
+                                    @Suppress("UNCHECKED_CAST")
+                                    when (event) {
+                                        Event.NEXT -> emitter.onError(error)
+                                        Event.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
+                                        Event.CANCEL -> emitter.onError(Abort(error.message))
+                                    }
+                                }
+                                lifecycle?.cannotRetry(error, userDecision)
+                            }
+                        }
+                    }
                 }
-                emitter.onComplete()
-            }
+                .onErrorResumeNext(Function { error ->
+                    if (error is RxMethod.Abort) {
+                        Observable.error(error)
+                    } else {
+                        Observable.empty<T>()
+                    }
+                })
+    }
+
+    private fun prepareAsyncOperation(operation: Observable<T>): Observable<T> {
+        return operation.subscribeOn(RxExecutor.SCHEDULER).retry { attempts, error ->
+            Log.d(RxExecutor.TAG, "retry async -> $attempts, ${error.message}")
+            attempts < retryAttempts
         }
-
-        lifecycle?.cannotRetry(error, userDecision)
-    }.subscribeOn(AndroidSchedulers.mainThread())
-
-    class SyncResume
+    }
 
     class Abort(message: String? = "") : Throwable(message)
 
@@ -111,8 +89,8 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
         private const val DEFAULT_RETRY_ATTEMPTS = 3L
 
-        fun <T : Any> create(async: Boolean, retryAttempts: Long = DEFAULT_RETRY_ATTEMPTS, scheduler: Scheduler = Schedulers.io()): RxMethod<T> {
-            return RxMethod(async, retryAttempts, scheduler)
+        fun <T : Any> create(async: Boolean, retryAttempts: Long = DEFAULT_RETRY_ATTEMPTS): RxMethod<T> {
+            return RxMethod(async, retryAttempts)
         }
     }
 }

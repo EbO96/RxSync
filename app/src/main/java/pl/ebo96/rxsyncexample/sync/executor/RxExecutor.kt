@@ -1,12 +1,22 @@
 package pl.ebo96.rxsyncexample.sync.executor
 
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
+import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsyncexample.sync.RxMethod
 import pl.ebo96.rxsyncexample.sync.RxModule
 import pl.ebo96.rxsyncexample.sync.RxProgress
 import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * //TODO
+ */
 class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
         private val errorHandler: Consumer<Throwable>,
@@ -14,24 +24,31 @@ class RxExecutor<T : Any> private constructor(
 ) {
 
     init {
-        RxJavaPlugins.setErrorHandler(errorHandler)
+        RxJavaPlugins.setErrorHandler(onError())
     }
 
     fun start() {
-        rxModulesExecutor.execute(progressHandler, onError())
+        rxModulesExecutor.execute(onProgress(), onError())
     }
 
     fun stop() {
         rxModulesExecutor.abort()
-        Helper.syncComplete()
     }
 
-    private fun onError(): Consumer<Throwable> = Consumer {
-        errorHandler.accept(it)
+    private fun onError(): Consumer<Throwable> = Consumer { error ->
+        errorHandler.also { consumer ->
+            onUi {
+                consumer.accept(error)
+            }
+        }
     }
 
-    fun shutdown() {
-        Helper.clear()
+    private fun onProgress(): Consumer<RxProgress> = Consumer { progress ->
+        progressHandler?.also { consumer ->
+            onUi {
+                consumer.accept(progress)
+            }
+        }
     }
 
     interface Lifecycle {
@@ -65,25 +82,24 @@ class RxExecutor<T : Any> private constructor(
     }
 
     object Helper {
-        var done: Int = 0
-            @Synchronized
-            set
-            @Synchronized
-            get
 
-        var numberOfMethods = 0
-            @Synchronized
-            set
-            @Synchronized
-            get
+        val doneMethods = ConcurrentHashMap<Int, Int>()
 
-        fun clear() {
-            done = 0
-            numberOfMethods = 0
-        }
+        val numberOfMethods: AtomicInteger = AtomicInteger()
+    }
 
-        fun syncComplete() {
-            done = 0
-        }
+    companion object {
+
+        const val TAG = "rxexecutor"
+
+        private val processors = (Runtime.getRuntime().availableProcessors() / 2) + 1
+        val SCHEDULER = Schedulers.from(Executors.newFixedThreadPool(processors))
+    }
+
+    private fun onUi(processCode: () -> Unit) {
+        Observable.empty<Unit>()
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnComplete { processCode() }
+                .subscribe()
     }
 }

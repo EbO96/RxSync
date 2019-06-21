@@ -1,6 +1,7 @@
 package pl.ebo96.rxsyncexample
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.activity_main.*
@@ -24,12 +25,13 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
                     setResultOnTextView("$it")
                 })
                 .setErrorHandler(Consumer {
-                    clearUi()
+                    it.printStackTrace()
                     setResultOnTextView("${it.message}")
                 })
                 .build()
 
         startButton.setOnClickListener {
+            clearUi()
             rxExecutor.start()
         }
 
@@ -52,7 +54,7 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
     }
 
     override fun cannotRetry(error: Throwable, decision: Consumer<RxMethod.Event>) {
-        setResultOnTextView(error.message ?: "Error")
+        //  setResultOnTextView(error.message ?: "Error")
         retryButton.setOnClickListener {
             decision.accept(RxMethod.Event.RETRY)
         }
@@ -75,10 +77,6 @@ class MainActivity : AppCompatActivity(), RxExecutor.Lifecycle {
 
     private fun setResultOnTextView(text: String) {
         resultTextView.text = "$text\n----------------------------"
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        rxExecutor.shutdown()
+        Log.d(RxExecutor.TAG, text)
     }
 }
