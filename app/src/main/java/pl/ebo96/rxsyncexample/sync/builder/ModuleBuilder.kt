@@ -1,11 +1,10 @@
 package pl.ebo96.rxsyncexample.sync.builder
 
 import pl.ebo96.rxsyncexample.sync.RxModule
-import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
-abstract class ModuleBuilder<T : Any>(rxEvent: RxExecutor.RxEvent?) {
+abstract class ModuleBuilder<T : Any> {
 
-    val module = this.build(RxModule.Builder(rxEvent))
+    val module: RxModule<out T> by lazy { this.build(RxModule.Builder()) }
 
     abstract fun build(builder: RxModule.Builder<T>): RxModule<out T>
 }

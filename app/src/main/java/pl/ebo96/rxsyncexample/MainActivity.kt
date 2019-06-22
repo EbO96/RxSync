@@ -5,10 +5,10 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.activity_main.*
-import pl.ebo96.rxsyncexample.sync.RxMethod
+import pl.ebo96.rxsyncexample.sync.event.RxEvent
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
-class MainActivity : AppCompatActivity(), RxExecutor.RxEvent {
+class MainActivity : AppCompatActivity(), RxExecutor.RxEventHandler {
 
     private lateinit var rxExecutor: RxExecutor<Any>
 
@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity(), RxExecutor.RxEvent {
 
         rxExecutor = RxExecutor.Builder<Any>()
                 .register(ExampleModule2())
-                .register(ExampleModule(this))
+                .register(ExampleModule())
                 .setProgressHandler(Consumer {
                     progressBar.max = it.total
                     progressBar.progress = it.done
@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity(), RxExecutor.RxEvent {
                     it.printStackTrace()
                     setResultOnTextView("${it.message}")
                 })
+                .setEventHandler(this)
                 .build()
 
         startButton.setOnClickListener {
@@ -36,24 +37,24 @@ class MainActivity : AppCompatActivity(), RxExecutor.RxEvent {
             rxExecutor.start()
         }
 
-        stopButton.setOnClickListener {
+        cancelAllButton.setOnClickListener {
             clearUi()
-            rxExecutor.stop()
+            rxExecutor.cancel()
         }
     }
 
-    override fun onEvent(error: Throwable, event: Consumer<RxMethod.Event>) {
+    override fun onNewRxEvent(error: Throwable, rxEvent: Consumer<RxEvent>) {
         setResultOnTextView(error.message ?: "Error")
         retryButton.setOnClickListener {
-            event.accept(RxMethod.Event.RETRY)
+            rxEvent.accept(RxEvent.RETRY)
         }
 
         nextButton.setOnClickListener {
-            event.accept(RxMethod.Event.NEXT)
+            rxEvent.accept(RxEvent.NEXT)
         }
 
         cancelButton.setOnClickListener {
-            event.accept(RxMethod.Event.CANCEL)
+            rxEvent.accept(RxEvent.CANCEL)
         }
     }
 

@@ -5,7 +5,7 @@ import pl.ebo96.rxsyncexample.sync.RxMethod
 import pl.ebo96.rxsyncexample.sync.RxModule
 import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
 
-class ExampleModule2 : ModuleBuilder<String>(null) {
+class ExampleModule2 : ModuleBuilder<String>() {
 
     override fun build(builder: RxModule.Builder<String>): RxModule<String> {
         return builder

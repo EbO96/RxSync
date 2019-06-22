@@ -6,16 +6,25 @@ import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
+import pl.ebo96.rxsyncexample.sync.event.RxEvent
+import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 import pl.ebo96.rxsyncexample.sync.executor.RxMethodsExecutor
 
 class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long) {
 
-    var rxEvent: RxExecutor.RxEvent? = null
+    private var rxEventHandler: RxExecutor.RxEventHandler? = null
+    private lateinit var rxExecutorStateStore: RxExecutorStateStore
 
-    var id = 1 //TODO
+    val id: Int by lazy { rxExecutorStateStore.generateMethodId() }
 
-    lateinit var operation: Observable<out T>
+    private lateinit var operation: Observable<out T>
+
+    fun getOperation(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out T> {
+        this.rxEventHandler = rxEventHandler
+        this.rxExecutorStateStore = rxExecutorStateStore
+        return operation.doOnNext(rxExecutorStateStore.storeMethodAsDoneWhenCompleted(this))
+    }
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
         this.operation = prepareOperation(operation)
@@ -40,24 +49,24 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
                     observable.flatMap { error ->
                         Observable.create<T> { emitter ->
                             Log.d(RxExecutor.TAG, "______________________________________________________________")
-                            if (rxEvent == null) {
+                            if (rxEventHandler == null) {
                                 emitter.onError(error)
                                 emitter.onComplete()
                                 return@create
                             }
 
-                            val event = Consumer<Event> { event ->
+                            val event = Consumer<RxEvent> { event ->
                                 if (!emitter.isDisposed) {
                                     @Suppress("UNCHECKED_CAST")
                                     when (event) {
-                                        Event.NEXT -> emitter.onError(error)
-                                        Event.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
-                                        Event.CANCEL -> emitter.onError(Abort(error.message))
+                                        RxEvent.NEXT -> emitter.onError(error)
+                                        RxEvent.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
+                                        RxEvent.CANCEL -> emitter.onError(Abort(error.message))
                                     }
                                     emitter.onComplete()
                                 }
                             }
-                            rxEvent?.onEvent(error, event)
+                            rxEventHandler?.onNewRxEvent(error, event)
                         }.subscribeOn(AndroidSchedulers.mainThread())
                     }
                 }
@@ -78,12 +87,6 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     class Abort(message: String? = "") : Throwable(message)
-
-    sealed class Event {
-        object CANCEL : Event()
-        object NEXT : Event()
-        object RETRY : Event()
-    }
 
     companion object {
 

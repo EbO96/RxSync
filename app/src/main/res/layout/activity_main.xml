@@ -7,6 +7,12 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="EXECUTOR CONTROLL"
+        android:textAlignment="center" />
+
     <Button
         android:id="@+id/startButton"
         android:layout_width="match_parent"
@@ -18,14 +24,20 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/stopButton"
+        android:id="@+id/cancelAllButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="STOP"
+        android:text="CANCEL ALL"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="MODULE CONTROLL"
+        android:textAlignment="center" />
 
     <Button
         android:id="@+id/nextButton"

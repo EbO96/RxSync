@@ -4,9 +4,11 @@ import android.util.Log
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import pl.ebo96.rxsyncexample.sync.RxModule
-import java.util.*
+import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 
-class RxModulesExecutor<T : Any> constructor(private val rxModules: ArrayList<RxModule<out T>>) {
+class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModule<out T>>,
+                                             private val rxEventHandler: RxExecutor.RxEventHandler?,
+                                             val rxExecutorStateStore: RxExecutorStateStore) {
 
     fun execute(): Observable<T> {
         val modulesMethodsAsObservable = rxModules.map {
@@ -15,15 +17,16 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: ArrayList<Rx
 
         return Observable.concat(modulesMethodsAsObservable)
                 .concatMapEager { module ->
-                    module.prepareMethods()
+                    module.prepareMethods(rxEventHandler, rxExecutorStateStore)
                 }
                 .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
-                .doOnSubscribe {
-                    Log.d(RxExecutor.TAG, "SUBSCRIBED")
+                .doOnSubscribe(rxExecutorStateStore.reset())
+                .doAfterNext {
+                    Log.d(RxExecutor.TAG, "doAfterNext -> $it")
                 }
                 .doOnEach {
-                    Log.d(RxExecutor.TAG, "onEach")
+                    Log.d(RxExecutor.TAG, "* doOnEach -> $it")
                     //TODO update total methods size
                 }
 
