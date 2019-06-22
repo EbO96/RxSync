@@ -1,6 +1,5 @@
 package pl.ebo96.rxsyncexample.sync.executor
 
-import android.util.Log
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import pl.ebo96.rxsyncexample.sync.RxModule
@@ -22,13 +21,5 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
                 .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
-                .doAfterNext {
-                    Log.d(RxExecutor.TAG, "doAfterNext -> $it")
-                }
-                .doOnEach {
-                    Log.d(RxExecutor.TAG, "* doOnEach -> $it")
-                    //TODO update total methods size
-                }
-
     }
 }

@@ -29,7 +29,7 @@ class RxExecutorStateStore {
     }
 
     fun <T : Any> storeMethodAsDoneWhenCompleted(rxMethod: RxMethod<out T>): Consumer<T> = Consumer {
-        Log.d(RxExecutor.TAG, "storeMethodAsDoneWhenCompleted -> $it")
+        Log.d(RxExecutor.TAG, "storeMethodAsDoneWhenCompleted, id -> ${rxMethod.id}, returns -> $it")
         doneMethods[rxMethod.id] = rxMethod.id
     }
 

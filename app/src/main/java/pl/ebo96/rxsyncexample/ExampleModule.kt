@@ -11,11 +11,11 @@ class ExampleModule : ModuleBuilder<Any>() {
         return builder
                 .register(buildMethod(false, 1))
                 .register(buildMethod(false, 2, 500))
-                .register(buildMethod(false, 3, 10, false))
+                .register(buildMethod(false, 3, 10, true))
                 .register(buildMethod(false, 4, 200))
                 .register(buildMethod(true, 5, 300, false))
                 .register(buildMethod(true, 6, 400))
-                .register(buildMethod(true, 7, 100, false))
+                .register(buildMethod(true, 7, 100, true))
                 .register(buildMethod(true, 8, 10))
                 .build()
     }

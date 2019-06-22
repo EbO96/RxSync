@@ -30,9 +30,6 @@ class RxExecutor<T : Any> private constructor(
 
     fun start() {
         val disposable = rxModulesExecutor.execute()
-                .doOnEach {
-                    //TODO check and update number of all methods and done methods
-                }
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(Consumer {
                     progressHandler?.accept(

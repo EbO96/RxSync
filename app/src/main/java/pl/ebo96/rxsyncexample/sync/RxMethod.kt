@@ -23,7 +23,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     fun getOperation(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out T> {
         this.rxEventHandler = rxEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
-        return operation.doOnNext(rxExecutorStateStore.storeMethodAsDoneWhenCompleted(this))
+        return operation
     }
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
@@ -45,31 +45,8 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
                 .retry { attempts, error ->
                     Log.d(RxExecutor.TAG, "retry sync -> $attempts, ${error.message}")
                     attempts < retryAttempts
-                }.retryWhen { observable ->
-                    observable.flatMap { error ->
-                        Observable.create<T> { emitter ->
-                            Log.d(RxExecutor.TAG, "______________________________________________________________")
-                            if (rxEventHandler == null) {
-                                emitter.onError(error)
-                                emitter.onComplete()
-                                return@create
-                            }
-
-                            val event = Consumer<RxEvent> { event ->
-                                if (!emitter.isDisposed) {
-                                    @Suppress("UNCHECKED_CAST")
-                                    when (event) {
-                                        RxEvent.NEXT -> emitter.onError(error)
-                                        RxEvent.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
-                                        RxEvent.CANCEL -> emitter.onError(Abort(error.message))
-                                    }
-                                    emitter.onComplete()
-                                }
-                            }
-                            rxEventHandler?.onNewRxEvent(error, event)
-                        }.subscribeOn(AndroidSchedulers.mainThread())
-                    }
                 }
+                .retryWhen { getMethodRetryStrategy<T>(rxEventHandler, it) }
                 .onErrorResumeNext(Function { error ->
                     if (error is RxMethod.Abort) {
                         Observable.error(error)
@@ -94,6 +71,32 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
         fun <T : Any> create(async: Boolean, retryAttempts: Long = DEFAULT_RETRY_ATTEMPTS): RxMethod<T> {
             return RxMethod(async, retryAttempts)
+        }
+
+        fun <T : Any> getMethodRetryStrategy(rxEventHandler: RxExecutor.RxEventHandler?, errorObservable: Observable<Throwable>): Observable<T> {
+            return errorObservable.flatMap { error ->
+                Observable.create<T> { emitter ->
+                    Log.d(RxExecutor.TAG, "______________________________________________________________")
+                    if (rxEventHandler == null) {
+                        emitter.onError(error)
+                        emitter.onComplete()
+                        return@create
+                    }
+
+                    val event = Consumer<RxEvent> { event ->
+                        if (!emitter.isDisposed) {
+                            @Suppress("UNCHECKED_CAST")
+                            when (event) {
+                                RxEvent.NEXT -> emitter.onError(error)
+                                RxEvent.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
+                                RxEvent.CANCEL -> emitter.onError(RxMethod.Abort())
+                            }
+                            emitter.onComplete()
+                        }
+                    }
+                    rxEventHandler.onNewRxEvent(error, event)
+                }.subscribeOn(AndroidSchedulers.mainThread())
+            }
         }
     }
 }

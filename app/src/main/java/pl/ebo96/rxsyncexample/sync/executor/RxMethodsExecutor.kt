@@ -1,12 +1,8 @@
 package pl.ebo96.rxsyncexample.sync.executor
 
-import android.util.Log
 import io.reactivex.Observable
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
 import pl.ebo96.rxsyncexample.sync.RxMethod
-import pl.ebo96.rxsyncexample.sync.event.RxEvent
 import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 
 class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>) {
@@ -24,31 +20,7 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
 
         //Prepare async methods before execution
         val mergedAsyncMethods = Observable.mergeDelayError(asyncMethods)
-                .retryWhen {
-                    it.flatMap { error ->
-                        Observable.create<T> { emitter ->
-                            Log.d(RxExecutor.TAG, "______________________________________________________________")
-                            if (rxEventHandler == null) {
-                                emitter.onError(error)
-                                emitter.onComplete()
-                                return@create
-                            }
-
-                            val event = Consumer<RxEvent> { event ->
-                                if (!emitter.isDisposed) {
-                                    @Suppress("UNCHECKED_CAST")
-                                    when (event) {
-                                        RxEvent.NEXT -> emitter.onError(error)
-                                        RxEvent.RETRY -> emitter.onNext(RetryEvent() as T)
-                                        RxEvent.CANCEL -> emitter.onError(RxMethod.Abort())
-                                    }
-                                    emitter.onComplete()
-                                }
-                            }
-                            rxEventHandler.onNewRxEvent(error, event)
-                        }.subscribeOn(AndroidSchedulers.mainThread())
-                    }
-                }
+                .retryWhen { RxMethod.getMethodRetryStrategy<T>(rxEventHandler, it) }
                 .onErrorResumeNext(Function {
                     if (it is RxMethod.Abort) {
                         Observable.error(it)
