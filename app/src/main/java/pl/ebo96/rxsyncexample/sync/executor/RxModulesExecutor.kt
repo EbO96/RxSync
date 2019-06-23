@@ -13,13 +13,10 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
 
     fun execute(errorHandler: Consumer<Throwable>): Disposable {
         val modulesMethodsAsObservable = rxModules.map {
-            Observable.just(it)
+            it.prepareMethods(rxEventHandler, rxExecutorStateStore)
         }
 
         return Observable.concat(modulesMethodsAsObservable)
-                .concatMapEager { module ->
-                    module.prepareMethods(rxEventHandler, rxExecutorStateStore)
-                }
                 .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())

@@ -28,7 +28,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
         this.operation = prepareOperation(operation).flatMap {
-            Observable.just(MethodResult(this, it))
+            Observable.just(MethodResult(this, it)).subscribeOn(RxExecutor.SCHEDULER)
         }
         return this
     }
