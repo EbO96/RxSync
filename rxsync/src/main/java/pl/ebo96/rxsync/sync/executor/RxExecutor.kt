@@ -6,12 +6,8 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
 import io.reactivex.schedulers.Schedulers
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.builder.ModuleBuilder
-import pl.ebo96.rxsync.sync.event.RxErrorListener
-import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
-import pl.ebo96.rxsync.sync.event.RxProgressListener
-import pl.ebo96.rxsync.sync.event.RxResultListener
+import pl.ebo96.rxsync.sync.event.*
 import java.util.concurrent.Executors
 
 /**
@@ -37,10 +33,9 @@ class RxExecutor<T : Any> private constructor(
     /**
      * Cancel already running execution and start new one
      */
-    fun start(): CompositeDisposable? {
+    fun start() {
         cancel()
         compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler))
-        return compositeDisposable
     }
 
     /**

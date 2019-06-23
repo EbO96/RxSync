@@ -4,13 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
-import pl.ebo96.rxsync.sync.event.RxMethodEvent
-import pl.ebo96.rxsync.sync.event.RxMethodEventConsumer
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
-import pl.ebo96.rxsync.sync.event.RxErrorListener
-import pl.ebo96.rxsync.sync.event.RxProgress
-import pl.ebo96.rxsync.sync.event.RxProgressListener
-import pl.ebo96.rxsync.sync.event.RxResultListener
+import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.executor.RxExecutor
 
 class MainActivity : AppCompatActivity(), RxMethodEventHandler {
