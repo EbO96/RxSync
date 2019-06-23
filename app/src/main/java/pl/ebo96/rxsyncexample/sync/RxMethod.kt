@@ -20,6 +20,8 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private lateinit var operation: Observable<MethodResult<out T>>
 
+    private var databaseOperation: RxDatabaseOperation<out T>? = null
+
     fun getOperation(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<MethodResult<out T>> {
         this.rxEventHandler = rxEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
@@ -27,8 +29,25 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
-        this.operation = prepareOperation(operation).flatMap {
-            Observable.just(MethodResult(this, it)).subscribeOn(RxExecutor.SCHEDULER)
+        this.operation = prepareOperation(operation).mapToMethodResult()
+        return this
+    }
+
+    fun withDatabaseOperation(databaseOperation: RxDatabaseOperation<T>): RxMethod<T> {
+        this.databaseOperation = databaseOperation
+        return this
+    }
+
+    private fun Observable<out T>.mapToMethodResult(): Observable<MethodResult<out T>> {
+        return flatMap {
+            Observable.just(MethodResult(this@RxMethod, it)).subscribeOn(RxExecutor.SCHEDULER)
+        }
+    }
+
+    fun doSomethingWithResult(result: (T?) -> Unit): RxMethod<T> {
+        this.operation = this.operation.flatMap {
+            result(it.result)
+            Observable.just(it).subscribeOn(RxExecutor.SCHEDULER)
         }
         return this
     }

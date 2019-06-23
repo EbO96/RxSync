@@ -11,7 +11,9 @@ class ExampleModule : ModuleBuilder<Any>() {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<Any> {
         return builder
-                .register(buildMethod(false, 1))
+                .register(buildMethod(true, TestResult("Before modification")).doSomethingWithResult {
+                    it?.testText = "After modification"
+                })
                 .register(buildMethod(false, 2, 500))
                 .register(buildMethod(false, 3, 10, false))
                 .register(buildMethod(false, 4, 200))
