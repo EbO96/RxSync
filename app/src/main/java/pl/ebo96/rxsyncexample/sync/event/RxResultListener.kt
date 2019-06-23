@@ -1,6 +1,6 @@
 package pl.ebo96.rxsyncexample.sync.event
 
-interface RxMethodResultListener<T : Any> {
+interface RxResultListener<T : Any> {
 
     fun onResult(data: T?)
 

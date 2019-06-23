@@ -7,7 +7,7 @@ import pl.ebo96.rxsyncexample.sync.method.MethodResult
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class RxExecutorStateStore(private val progressHandler: Consumer<RxProgress>?, private val rxExecutorInfo: RxExecutorInfo) {
+class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, private val rxExecutorInfo: RxExecutorInfo) {
 
     private val doneMethods = ConcurrentHashMap<Int, Int>()
 
@@ -31,7 +31,7 @@ class RxExecutorStateStore(private val progressHandler: Consumer<RxProgress>?, p
         return rxExecutorInfo.getMethodsCount()
     }
 
-    fun <T : Any> updateProgressAndExposeResultOnUi(rxMethodResultListener: RxMethodResultListener<T>?): Consumer<MethodResult<out T>> = Consumer { methodResult ->
+    fun <T : Any> updateProgressAndExposeResultOnUi(rxResultListener: RxResultListener<T>?): Consumer<MethodResult<out T>> = Consumer { methodResult ->
         val methodId = methodResult.methodInfo.getMethodId()
         doneMethods[methodId] = methodId
 
@@ -40,8 +40,8 @@ class RxExecutorStateStore(private val progressHandler: Consumer<RxProgress>?, p
                 total = getAllMethodsCount()
         )
 
-        rxMethodResultListener?.onUiResult(methodResult.result)
-        progressHandler?.accept(rxProgress)
+        rxResultListener?.onUiResult(methodResult.result)
+        rxProgressListener?.onProgress(rxProgress)
     }
 
     fun reset(): Consumer<Disposable> = Consumer {

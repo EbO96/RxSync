@@ -7,10 +7,7 @@ import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
 import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
-import pl.ebo96.rxsyncexample.sync.event.RxEvent
-import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
-import pl.ebo96.rxsyncexample.sync.event.RxMethodResultListener
-import pl.ebo96.rxsyncexample.sync.event.RxProgress
+import pl.ebo96.rxsyncexample.sync.event.*
 import java.util.concurrent.Executors
 
 /**
@@ -23,9 +20,7 @@ import java.util.concurrent.Executors
  */
 class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
-        private val errorHandler: Consumer<Throwable>) {
-
-    private var started: Boolean = false
+        private val rxErrorListener: RxErrorListener) {
 
     private var compositeDisposable = CompositeDisposable()
 
@@ -49,7 +44,6 @@ class RxExecutor<T : Any> private constructor(
      */
     fun cancel() {
         compositeDisposable.clear()
-        started = false
     }
 
     /**
@@ -60,9 +54,7 @@ class RxExecutor<T : Any> private constructor(
     private fun getErrorHandlerOnUiThread(): Consumer<Throwable> = Consumer { error ->
         Completable.complete()
                 .observeOn(AndroidSchedulers.mainThread())
-                .doOnComplete {
-                    errorHandler.accept(error)
-                }
+                .doOnComplete { rxErrorListener.onError(error) }
                 .subscribe()
     }
 
@@ -74,23 +66,24 @@ class RxExecutor<T : Any> private constructor(
 
         private val rxModulesBuilders = ArrayList<ModuleBuilder<out T>>()
 
-        private lateinit var errorHandler: Consumer<Throwable>
-        private var progressHandler: Consumer<RxProgress>? = null
+        private lateinit var rxErrorListener: RxErrorListener
+        private var rxProgressListener: RxProgressListener? = null
+        private var rxResultListener: RxResultListener<T>? = null
+
         private var rxEventHandler: RxEventHandler? = null
-        private var rxMethodResultListener: RxMethodResultListener<T>? = null
 
         fun register(rxModule: ModuleBuilder<out T>): Builder<T> {
             rxModulesBuilders.add(rxModule)
             return this
         }
 
-        fun setErrorHandler(errorHandler: Consumer<Throwable>): Builder<T> {
-            this.errorHandler = errorHandler
+        fun setErrorListener(rxErrorListener: RxErrorListener): Builder<T> {
+            this.rxErrorListener = rxErrorListener
             return this
         }
 
-        fun setProgressListener(progressHandler: Consumer<RxProgress>): Builder<T> {
-            this.progressHandler = progressHandler
+        fun setProgressListener(rxProgressListener: RxProgressListener?): Builder<T> {
+            this.rxProgressListener = rxProgressListener
             return this
         }
 
@@ -99,14 +92,14 @@ class RxExecutor<T : Any> private constructor(
             return this
         }
 
-        fun setMethodResultListener(rxMethodResultListener: RxMethodResultListener<T>): Builder<T> {
-            this.rxMethodResultListener = rxMethodResultListener
+        fun setResultListener(rxResultListener: RxResultListener<T>): Builder<T> {
+            this.rxResultListener = rxResultListener
             return this
         }
 
         fun build(): RxExecutor<T> {
             val rxExecutorInfo = RxExecutorInfo()
-            val rxExecutorStateStore = RxExecutorStateStore(progressHandler, rxExecutorInfo)
+            val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
 
             val rxModules = rxModulesBuilders
                     .asSequence()
@@ -120,8 +113,8 @@ class RxExecutor<T : Any> private constructor(
 
             rxModulesBuilders.clear()
 
-            val modulesExecutor = RxModulesExecutor(rxModules, rxMethodResultListener, rxEventHandler, rxExecutorStateStore)
-            return RxExecutor(modulesExecutor, errorHandler)
+            val modulesExecutor = RxModulesExecutor(rxModules, rxResultListener, rxEventHandler, rxExecutorStateStore)
+            return RxExecutor(modulesExecutor, rxErrorListener)
         }
     }
 
