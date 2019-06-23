@@ -34,6 +34,10 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                         progressPercentTextView.text = "${rxProgress.percentage}%"
                         setResultOnTextView("$rxProgress")
                     }
+
+                    override fun completed() {
+                        setResultOnTextView("Completed")
+                    }
                 })
                 .setErrorListener(object : RxErrorListener {
                     override fun onError(error: Throwable) {

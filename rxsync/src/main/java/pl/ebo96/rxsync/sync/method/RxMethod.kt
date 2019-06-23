@@ -6,12 +6,12 @@ import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
+import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEvent
 import pl.ebo96.rxsync.sync.event.RxMethodEventConsumer
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
-import pl.ebo96.rxsync.sync.executor.RxMethodsExecutor
-import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.executor.RxExecutor
+import pl.ebo96.rxsync.sync.executor.RxMethodsExecutor
 
 class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long) : MethodInfo {
 
@@ -80,10 +80,11 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     private fun prepareAsyncOperation(operation: Observable<T>): Observable<T> {
-        return operation.subscribeOn(RxExecutor.SCHEDULER).retry { attempts, error ->
-            Log.d(RxExecutor.TAG, "retry async -> $attempts, ${error.message}")
-            attempts < retryAttempts
-        }
+        return operation.subscribeOn(RxExecutor.SCHEDULER)
+                .retry { attempts, error ->
+                    Log.d(RxExecutor.TAG, "retry async -> $attempts, ${error.message}")
+                    attempts < retryAttempts
+                }
     }
 
     override fun getMethodId(): Int = id

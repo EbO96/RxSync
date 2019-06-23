@@ -107,7 +107,7 @@ class RxExecutor<T : Any> private constructor(
 
             rxModulesBuilders.clear()
 
-            val modulesExecutor = RxModulesExecutor(rxModules, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
+            val modulesExecutor = RxModulesExecutor(rxModules,rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
             return RxExecutor(modulesExecutor, rxErrorListener)
         }
     }

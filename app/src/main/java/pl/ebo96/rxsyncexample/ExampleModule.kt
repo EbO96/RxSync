@@ -11,8 +11,8 @@ class ExampleModule : ModuleBuilder<Any>() {
                 .register(buildMethod(false, TestResult("Before modification")).doSomethingWithResult {
                     it?.testText = "After modification"
                 })
-                .register(buildMethod(true, 2, 500, false))
-                .register(buildMethod(false, 3, 10, false))
+                .register(buildMethod(true, 2, 500, true))
+                .register(buildMethod(true, 3, 10, true))
                 .register(buildMethod(false, 4, 200))
                 .register(buildMethod(true, 5, 300, false))
                 .register(buildMethod(false, 6, 400))

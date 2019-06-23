@@ -4,13 +4,15 @@ import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
-import pl.ebo96.rxsync.sync.module.RxModule
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
+import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
+import pl.ebo96.rxsync.sync.event.RxProgressListener
 import pl.ebo96.rxsync.sync.event.RxResultListener
 import pl.ebo96.rxsync.sync.method.MethodResult
+import pl.ebo96.rxsync.sync.module.RxModule
 
 class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModule<out T>>,
+                                             private val rxProgressListener: RxProgressListener?,
                                              private val rxResultListener: RxResultListener<T>?,
                                              private val rxMethodEventHandler: RxMethodEventHandler?,
                                              private val rxExecutorStateStore: RxExecutorStateStore) {
@@ -25,6 +27,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
                 .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
+                .doOnComplete { rxProgressListener?.completed() }
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResultOnUi(rxResultListener), errorHandler)
     }
 

@@ -2,8 +2,8 @@ package pl.ebo96.rxsync.sync.executor
 
 import io.reactivex.Observable
 import io.reactivex.functions.Function
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
+import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
 
