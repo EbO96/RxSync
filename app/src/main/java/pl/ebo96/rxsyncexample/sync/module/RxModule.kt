@@ -1,9 +1,11 @@
-package pl.ebo96.rxsyncexample.sync
+package pl.ebo96.rxsyncexample.sync.module
 
 import io.reactivex.Observable
 import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 import pl.ebo96.rxsyncexample.sync.executor.RxMethodsExecutor
+import pl.ebo96.rxsyncexample.sync.method.MethodResult
+import pl.ebo96.rxsyncexample.sync.method.RxMethod
 
 class RxModule<T : Any> private constructor(private val id: Int, private val rxMethodsExecutor: RxMethodsExecutor<out T>) : ModuleInfo,
         Comparable<RxModule<T>> {

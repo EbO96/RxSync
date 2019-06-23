@@ -1,4 +1,4 @@
-package pl.ebo96.rxsyncexample.sync
+package pl.ebo96.rxsyncexample.sync.module
 
 interface ModuleInfo {
 

@@ -2,9 +2,9 @@ package pl.ebo96.rxsyncexample.sync.executor
 
 import io.reactivex.Observable
 import io.reactivex.functions.Function
-import pl.ebo96.rxsyncexample.sync.MethodResult
-import pl.ebo96.rxsyncexample.sync.RxMethod
 import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
+import pl.ebo96.rxsyncexample.sync.method.MethodResult
+import pl.ebo96.rxsyncexample.sync.method.RxMethod
 
 class RxMethodsExecutor<T : Any> constructor(private val methods: ArrayList<RxMethod<out T>>) {
 
@@ -31,10 +31,10 @@ class RxMethodsExecutor<T : Any> constructor(private val methods: ArrayList<RxMe
                 })
 
         //Prepare sync methods
-        val mergedSyncMethods = Observable.concat(syncMethods)
-                .subscribeOn(RxExecutor.SCHEDULER)
+        val mergedSyncMethods = Observable.concat(syncMethods).subscribeOn(RxExecutor.SCHEDULER)
 
         return Observable.concat(mergedSyncMethods, mergedAsyncMethods)
+
     }
 
     fun methodsCount(): Int = methods.size

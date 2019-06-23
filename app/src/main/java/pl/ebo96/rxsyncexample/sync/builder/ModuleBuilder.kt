@@ -1,6 +1,6 @@
 package pl.ebo96.rxsyncexample.sync.builder
 
-import pl.ebo96.rxsyncexample.sync.RxModule
+import pl.ebo96.rxsyncexample.sync.module.RxModule
 
 abstract class ModuleBuilder<T : Any> {
 

@@ -1,4 +1,4 @@
-package pl.ebo96.rxsyncexample.sync
+package pl.ebo96.rxsyncexample.sync.method
 
 import android.annotation.SuppressLint
 import android.util.Log
@@ -20,8 +20,6 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private lateinit var operation: Observable<MethodResult<out T>>
 
-    private var databaseOperation: RxDatabaseOperation<out T>? = null
-
     fun getOperation(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<MethodResult<out T>> {
         this.rxEventHandler = rxEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
@@ -30,11 +28,6 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
         this.operation = prepareOperation(operation).mapToMethodResult()
-        return this
-    }
-
-    fun withDatabaseOperation(databaseOperation: RxDatabaseOperation<T>): RxMethod<T> {
-        this.databaseOperation = databaseOperation
         return this
     }
 
@@ -63,13 +56,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private fun prepareSyncOperation(operation: Observable<T>): Observable<T> {
         return operation
+                .subscribeOn(RxExecutor.SCHEDULER)
                 .retry { attempts, error ->
-                    Log.d(RxExecutor.TAG, "retry sync -> $attempts, ${error.message}")
+                    Log.d(RxExecutor.TAG, "retry sync -> $attempts, ${error.message} on thread -> ${Thread.currentThread().name}")
                     attempts < retryAttempts
                 }
                 .retryWhen { getMethodRetryStrategy<T>(rxEventHandler, it) }
                 .onErrorResumeNext(Function { error ->
-                    if (error is RxMethod.Abort) {
+                    if (error is Abort) {
                         Observable.error(error)
                     } else {
                         Observable.empty<T>()
@@ -112,7 +106,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
                             when (event) {
                                 RxEvent.NEXT -> emitter.onError(error)
                                 RxEvent.RETRY -> emitter.onNext(RxMethodsExecutor.RetryEvent() as T)
-                                RxEvent.CANCEL -> emitter.onError(RxMethod.Abort())
+                                RxEvent.CANCEL -> emitter.onError(Abort())
                             }
                             emitter.onComplete()
                         }

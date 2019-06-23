@@ -2,9 +2,8 @@ package pl.ebo96.rxsyncexample.sync.event
 
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
-import pl.ebo96.rxsyncexample.sync.MethodResult
-import pl.ebo96.rxsyncexample.sync.RxProgress
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutorInfo
+import pl.ebo96.rxsyncexample.sync.method.MethodResult
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -32,16 +31,16 @@ class RxExecutorStateStore(private val progressHandler: Consumer<RxProgress>?, p
         return rxExecutorInfo.getMethodsCount()
     }
 
-    fun <T : Any> updateProgress(): Consumer<MethodResult<out T>> = Consumer { methodResult ->
+    fun <T : Any> updateProgressAndExposeResultOnUi(rxMethodResultListener: RxMethodResultListener<T>?): Consumer<MethodResult<out T>> = Consumer { methodResult ->
         val methodId = methodResult.methodInfo.getMethodId()
         doneMethods[methodId] = methodId
 
         val rxProgress = RxProgress(
                 done = getDoneMethodsCount(),
-                total = getAllMethodsCount(),
-                result = methodResult.result
+                total = getAllMethodsCount()
         )
 
+        rxMethodResultListener?.onUiResult(methodResult.result)
         progressHandler?.accept(rxProgress)
     }
 

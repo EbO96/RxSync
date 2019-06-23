@@ -6,10 +6,11 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
 import io.reactivex.schedulers.Schedulers
-import pl.ebo96.rxsyncexample.sync.RxProgress
 import pl.ebo96.rxsyncexample.sync.builder.ModuleBuilder
 import pl.ebo96.rxsyncexample.sync.event.RxEvent
 import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
+import pl.ebo96.rxsyncexample.sync.event.RxMethodResultListener
+import pl.ebo96.rxsyncexample.sync.event.RxProgress
 import java.util.concurrent.Executors
 
 /**
@@ -76,6 +77,7 @@ class RxExecutor<T : Any> private constructor(
         private lateinit var errorHandler: Consumer<Throwable>
         private var progressHandler: Consumer<RxProgress>? = null
         private var rxEventHandler: RxEventHandler? = null
+        private var rxMethodResultListener: RxMethodResultListener<T>? = null
 
         fun register(rxModule: ModuleBuilder<out T>): Builder<T> {
             rxModulesBuilders.add(rxModule)
@@ -87,13 +89,18 @@ class RxExecutor<T : Any> private constructor(
             return this
         }
 
-        fun setProgressHandler(progressHandler: Consumer<RxProgress>): Builder<T> {
+        fun setProgressListener(progressHandler: Consumer<RxProgress>): Builder<T> {
             this.progressHandler = progressHandler
             return this
         }
 
-        fun setEventHandler(rxEventHandler: RxEventHandler): Builder<T> {
+        fun setEventHandler(rxEventHandler: RxEventHandler?): Builder<T> {
             this.rxEventHandler = rxEventHandler
+            return this
+        }
+
+        fun setMethodResultListener(rxMethodResultListener: RxMethodResultListener<T>): Builder<T> {
+            this.rxMethodResultListener = rxMethodResultListener
             return this
         }
 
@@ -113,7 +120,7 @@ class RxExecutor<T : Any> private constructor(
 
             rxModulesBuilders.clear()
 
-            val modulesExecutor = RxModulesExecutor(rxModules, rxEventHandler, rxExecutorStateStore)
+            val modulesExecutor = RxModulesExecutor(rxModules, rxMethodResultListener, rxEventHandler, rxExecutorStateStore)
             return RxExecutor(modulesExecutor, errorHandler)
         }
     }
@@ -124,5 +131,12 @@ class RxExecutor<T : Any> private constructor(
 
         private val processors = (Runtime.getRuntime().availableProcessors() / 2) + 1
         val SCHEDULER = Schedulers.from(Executors.newFixedThreadPool(processors))
+
+        fun onUi(code: () -> Unit) {
+            Completable.complete()
+                    .subscribeOn(AndroidSchedulers.mainThread())
+                    .doOnComplete { code() }
+                    .subscribe()
+        }
     }
 }

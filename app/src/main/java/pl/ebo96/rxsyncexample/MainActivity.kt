@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsyncexample.sync.event.RxEvent
+import pl.ebo96.rxsyncexample.sync.event.RxMethodResultListener
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 
 class MainActivity : AppCompatActivity(), RxExecutor.RxEventHandler {
@@ -19,7 +20,16 @@ class MainActivity : AppCompatActivity(), RxExecutor.RxEventHandler {
         rxExecutor = RxExecutor.Builder<Any>()
                 .register(ExampleModule2())
                 .register(ExampleModule())
-                .setProgressHandler(Consumer {
+                .setMethodResultListener(object : RxMethodResultListener<Any> {
+                    override fun onResult(data: Any?) {
+                        Log.d(RxExecutor.TAG, "on result -> $data, thread -> ${Thread.currentThread().name}")
+                    }
+
+                    override fun onUiResult(data: Any?) {
+                        setResultOnTextView("$data")
+                    }
+                })
+                .setProgressListener(Consumer {
                     progressBar.max = it.total
                     progressBar.progress = it.done
                     progressPercentTextView.text = "${it.percentage}%"

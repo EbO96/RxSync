@@ -1,6 +1,6 @@
 package pl.ebo96.rxsyncexample.sync.executor
 
-import pl.ebo96.rxsyncexample.sync.ModuleInfo
+import pl.ebo96.rxsyncexample.sync.module.ModuleInfo
 import java.util.concurrent.ConcurrentSkipListSet
 
 class RxExecutorInfo {
