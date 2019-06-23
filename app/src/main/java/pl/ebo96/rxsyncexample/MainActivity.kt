@@ -3,12 +3,17 @@ package pl.ebo96.rxsyncexample
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.activity_main.*
-import pl.ebo96.rxsyncexample.sync.event.*
-import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
+import pl.ebo96.rxsync.sync.event.RxMethodEvent
+import pl.ebo96.rxsync.sync.event.RxMethodEventConsumer
+import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
+import pl.ebo96.rxsync.sync.event.RxErrorListener
+import pl.ebo96.rxsync.sync.event.RxProgress
+import pl.ebo96.rxsync.sync.event.RxProgressListener
+import pl.ebo96.rxsync.sync.event.RxResultListener
+import pl.ebo96.rxsync.sync.executor.RxExecutor
 
-class MainActivity : AppCompatActivity(), RxExecutor.RxEventHandler {
+class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
     private lateinit var rxExecutor: RxExecutor<Any>
 
@@ -56,18 +61,18 @@ class MainActivity : AppCompatActivity(), RxExecutor.RxEventHandler {
         }
     }
 
-    override fun onNewRxEvent(error: Throwable, rxEvent: Consumer<RxEvent>) {
+    override fun onNewRxEvent(error: Throwable, rxMethodEvent: RxMethodEventConsumer) {
         setResultOnTextView(error.message ?: "Error")
         retryButton.setOnClickListener {
-            rxEvent.accept(RxEvent.RETRY)
+            rxMethodEvent.onResponse(RxMethodEvent.RETRY)
         }
 
         nextButton.setOnClickListener {
-            rxEvent.accept(RxEvent.NEXT)
+            rxMethodEvent.onResponse(RxMethodEvent.NEXT)
         }
 
         cancelButton.setOnClickListener {
-            rxEvent.accept(RxEvent.CANCEL)
+            rxMethodEvent.onResponse(RxMethodEvent.CANCEL)
         }
     }
 
