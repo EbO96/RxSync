@@ -13,12 +13,18 @@ import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 import java.util.concurrent.Executors
 
 /**
- * //TODO
+ * This class is responsible for starting and cancelling execution of registered modules.
+ *
+ * @param rxModulesExecutor it is responsible for executing registered modules
+ * @see RxModulesExecutor
+ *
+ * @param errorHandler user interface which provide information about execution failures
  */
 class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
-        private val errorHandler: Consumer<Throwable>,
-        private val progressHandler: Consumer<RxProgress>?) {
+        private val errorHandler: Consumer<Throwable>) {
+
+    private var started: Boolean = false
 
     private var compositeDisposable = CompositeDisposable()
 
@@ -28,26 +34,28 @@ class RxExecutor<T : Any> private constructor(
         RxJavaPlugins.setErrorHandler(onUiThreadErrorHandler)
     }
 
-    fun start() {
-        val disposable = rxModulesExecutor.execute()
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(Consumer {
-                    progressHandler?.accept(
-                            RxProgress(
-                                    rxModulesExecutor.rxExecutorStateStore.getDoneMethodsCount(),
-                                    rxModulesExecutor.rxExecutorStateStore.getAllMethodsCount(),
-                                    it
-                            )
-                    )
-                }, onUiThreadErrorHandler)
-
-        compositeDisposable.add(disposable)
+    /**
+     * Cancel already running execution and start new one
+     */
+    fun start(): CompositeDisposable? {
+        cancel()
+        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler))
+        return compositeDisposable
     }
 
+    /**
+     * Cancel execution
+     */
     fun cancel() {
         compositeDisposable.clear()
+        started = false
     }
 
+    /**
+     * Returns consumer which are operates on UI thread.
+     * This is middleware between RxJava 'onError Consumer' and user registered 'onError Consumer'
+     * @see Consumer
+     */
     private fun getErrorHandlerOnUiThread(): Consumer<Throwable> = Consumer { error ->
         Completable.complete()
                 .observeOn(AndroidSchedulers.mainThread())
@@ -90,9 +98,23 @@ class RxExecutor<T : Any> private constructor(
         }
 
         fun build(): RxExecutor<T> {
-            val rxModules = rxModulesBuilders.map { it.module }
+            val rxExecutorInfo = RxExecutorInfo()
+            val rxExecutorStateStore = RxExecutorStateStore(progressHandler, rxExecutorInfo)
+
+            val rxModules = rxModulesBuilders
+                    .asSequence()
+                    .map {
+                        it.createModuleAndGet(rxExecutorStateStore.generateModuleId())
+                    }
+                    .onEach {
+                        rxExecutorInfo.saveModuleInfo(it)
+                    }
+                    .toList()
+
             rxModulesBuilders.clear()
-            return RxExecutor(RxModulesExecutor(rxModules, rxEventHandler, RxExecutorStateStore()), errorHandler, progressHandler)
+
+            val modulesExecutor = RxModulesExecutor(rxModules, rxEventHandler, rxExecutorStateStore)
+            return RxExecutor(modulesExecutor, errorHandler)
         }
     }
 

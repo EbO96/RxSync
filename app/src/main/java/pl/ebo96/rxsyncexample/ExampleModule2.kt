@@ -9,19 +9,26 @@ class ExampleModule2 : ModuleBuilder<String>() {
 
     override fun build(builder: RxModule.Builder<String>): RxModule<String> {
         return builder
-                .register(
-                        RxMethod.create<String>(true).registerOperation(Observable.just("Hello 1 From ${this.javaClass.simpleName}"))
-                )
-                .register(
-                        RxMethod.create<String>(false).registerOperation(Observable.just("Hello 2 From ${this.javaClass.simpleName}"))
-                )
-                .register(
-                        RxMethod.create<String>(true).registerOperation(Observable.just("Hello 3 From ${this.javaClass.simpleName}"))
-                )
-                .register(
-                        RxMethod.create<String>(false).registerOperation(Observable.just("Hello 4 From ${this.javaClass.simpleName}"))
-                )
+                .register(buildMethod(false, "Hello", 0, false))
+                .register(buildMethod(false, "There", 0, false))
+                .register(buildMethod(false, "Or", 1500, false))
+                .register(buildMethod(true, "Hello", 0, false))
+                .register(buildMethod(true, "World", 1000, false))
                 .build()
+    }
+
+    private fun <T : Any> buildMethod(async: Boolean, returnObject: T, delay: Long = 0, simulateError: Boolean = false): RxMethod<T> {
+        return RxMethod.create<T>(async).registerOperation(Observable.create<T> {
+            Thread.sleep(delay)
+            if (!it.serialize().isDisposed) {
+//                Log.d(RxExecutor.TAG, "Thread -> ${Thread.currentThread().name}")
+                if (simulateError) {
+                    throw Exception("Simulated error for $returnObject")
+                }
+                it.onNext(returnObject)
+                it.onComplete()
+            }
+        })
     }
 
 }

@@ -5,13 +5,39 @@ import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 import pl.ebo96.rxsyncexample.sync.executor.RxMethodsExecutor
 
-class RxModule<T : Any> private constructor(private val rxMethodsExecutor: RxMethodsExecutor<out T>) {
+class RxModule<T : Any> private constructor(private val id: Int, private val rxMethodsExecutor: RxMethodsExecutor<out T>) : ModuleInfo,
+        Comparable<RxModule<T>> {
 
-    fun prepareMethods(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out T> {
+    fun prepareMethods(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out MethodResult<out T>> {
         return rxMethodsExecutor.prepare(rxEventHandler, rxExecutorStateStore)
     }
 
-    class Builder<T : Any> {
+    override fun getModuleId(): Int {
+        return id
+    }
+
+    override fun getMethodsCount(): Int {
+        return rxMethodsExecutor.methodsCount()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        val module = other as? RxModule<*> ?: return false
+        return module.getModuleId() == getModuleId()
+    }
+
+    override fun hashCode(): Int {
+        return getModuleId()
+    }
+
+    override fun compareTo(other: RxModule<T>): Int {
+        return when {
+            other.getModuleId() < getModuleId() -> -1
+            other.getModuleId() > getModuleId() -> 1
+            else -> 0
+        }
+    }
+
+    class Builder<T : Any>(private val id: Int) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
 
@@ -21,7 +47,7 @@ class RxModule<T : Any> private constructor(private val rxMethodsExecutor: RxMet
         }
 
         fun build(): RxModule<T> {
-            return RxModule(RxMethodsExecutor(rxMethods))
+            return RxModule(id, RxMethodsExecutor(rxMethods))
         }
     }
 }

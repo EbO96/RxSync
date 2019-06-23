@@ -11,23 +11,25 @@ import pl.ebo96.rxsyncexample.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsyncexample.sync.executor.RxExecutor
 import pl.ebo96.rxsyncexample.sync.executor.RxMethodsExecutor
 
-class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long) {
+class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long) : MethodInfo {
 
     private var rxEventHandler: RxExecutor.RxEventHandler? = null
     private lateinit var rxExecutorStateStore: RxExecutorStateStore
 
-    val id: Int by lazy { rxExecutorStateStore.generateMethodId() }
+    private val id: Int by lazy { rxExecutorStateStore.generateMethodId() }
 
-    private lateinit var operation: Observable<out T>
+    private lateinit var operation: Observable<MethodResult<out T>>
 
-    fun getOperation(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out T> {
+    fun getOperation(rxEventHandler: RxExecutor.RxEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<MethodResult<out T>> {
         this.rxEventHandler = rxEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
         return operation
     }
 
     fun registerOperation(operation: Observable<T>): RxMethod<T> {
-        this.operation = prepareOperation(operation)
+        this.operation = prepareOperation(operation).flatMap {
+            Observable.just(MethodResult(this, it))
+        }
         return this
     }
 
@@ -62,6 +64,8 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
             attempts < retryAttempts
         }
     }
+
+    override fun getMethodId(): Int = id
 
     class Abort(message: String? = "") : Throwable(message)
 
