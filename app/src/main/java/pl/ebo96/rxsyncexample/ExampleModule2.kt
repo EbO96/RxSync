@@ -8,11 +8,11 @@ class ExampleModule2 : ModuleBuilder<String>() {
 
     override fun build(builder: RxModule.Builder<String>): RxModule<String> {
         return builder
-                .register(buildMethod(false, "Hello", 100, false))
-                .register(buildMethod(false, "There", 0, false))
-                .register(buildMethod(false, "Or", 150, false))
-                .register(buildMethod(false, "Hello", 0, false))
-                .register(buildMethod(false, "World", 100, false))
+                .register(buildMethod(true, "Hello", 1000, false))
+                .register(buildMethod(true, "There", 1000, false))
+                .register(buildMethod(true, "Or", 1000, false))
+                .register(buildMethod(true, "Hello", 1000, false))
+                .register(buildMethod(true, "World", 1000, false))
                 .build()
     }
 

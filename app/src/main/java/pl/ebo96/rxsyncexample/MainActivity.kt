@@ -16,6 +16,7 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
         rxExecutor = RxExecutor.Builder<Any>()
                 .register(ExampleModule())
+                .register(ExampleModule2())
                 .setResultListener(object : RxResultListener<Any> {
                     override fun onResult(data: Any?) {
                     }
