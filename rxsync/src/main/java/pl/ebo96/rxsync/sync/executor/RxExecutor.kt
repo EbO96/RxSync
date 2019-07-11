@@ -5,10 +5,9 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
-import io.reactivex.schedulers.Schedulers
+import pl.ebo96.rxsync.sync.RxDevice
 import pl.ebo96.rxsync.sync.builder.ModuleBuilder
 import pl.ebo96.rxsync.sync.event.*
-import java.util.concurrent.Executors
 
 /**
  * This class is responsible for starting and cancelling execution of registered modules.
@@ -59,12 +58,12 @@ class RxExecutor<T : Any> private constructor(
     class Builder<T : Any> {
 
         private val rxModulesBuilders = ArrayList<ModuleBuilder<out T>>()
-
         private lateinit var rxErrorListener: RxErrorListener
         private var rxProgressListener: RxProgressListener? = null
         private var rxResultListener: RxResultListener<T>? = null
-
         private var rxMethodEventHandler: RxMethodEventHandler? = null
+        private var maxThreads = RxDevice.defaultThreadsLimit
+
 
         fun register(rxModule: ModuleBuilder<out T>): Builder<T> {
             rxModulesBuilders.add(rxModule)
@@ -91,6 +90,20 @@ class RxExecutor<T : Any> private constructor(
             return this
         }
 
+        /**
+         * Set number of threads used by modules. If module doesn't specify
+         * number of threads available for methods then this value will be used.
+         * If specified number of threads is smaller or equal 0 then default value will be used.
+         * Default value is specified by RxExecutor library and it depends on number of available processors
+         * @see RxDevice.defaultThreadsLimit
+         */
+        fun setThreadsLimit(limit: Int): Builder<T> {
+            if (limit > 0) {
+                maxThreads = limit
+            }
+            return this
+        }
+
         fun build(): RxExecutor<T> {
             val rxExecutorInfo = RxExecutorInfo()
             val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
@@ -98,7 +111,7 @@ class RxExecutor<T : Any> private constructor(
             val rxModules = rxModulesBuilders
                     .asSequence()
                     .map {
-                        it.createModuleAndGet(rxExecutorStateStore.generateModuleId())
+                        it.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
                     }
                     .onEach {
                         rxExecutorInfo.saveModuleInfo(it)
@@ -107,7 +120,7 @@ class RxExecutor<T : Any> private constructor(
 
             rxModulesBuilders.clear()
 
-            val modulesExecutor = RxModulesExecutor(rxModules,rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
+            val modulesExecutor = RxModulesExecutor(rxModules, rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
             return RxExecutor(modulesExecutor, rxErrorListener)
         }
     }
@@ -115,9 +128,6 @@ class RxExecutor<T : Any> private constructor(
     companion object {
 
         const val TAG = "rxexecutor"
-
-        private val processors = (Runtime.getRuntime().availableProcessors() / 2) + 1
-        val SCHEDULER = Schedulers.from(Executors.newFixedThreadPool(processors))
 
         fun onUi(code: () -> Unit) {
             Completable.complete()

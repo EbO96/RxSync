@@ -7,11 +7,13 @@ import pl.ebo96.rxsync.sync.executor.RxMethodsExecutor
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
 
-class RxModule<T : Any> private constructor(private val id: Int, private val rxMethodsExecutor: RxMethodsExecutor<out T>) : ModuleInfo,
-        Comparable<RxModule<T>> {
+class RxModule<T : Any> private constructor(private val id: Int,
+                                            private val rxMethodsExecutor: RxMethodsExecutor<out T>,
+                                            private val maxThreads: Int)
+    : ModuleInfo, Comparable<RxModule<T>> {
 
     fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
-        return rxMethodsExecutor.prepare(rxMethodEventHandler, rxExecutorStateStore)
+        return rxMethodsExecutor.prepare(rxMethodEventHandler, rxExecutorStateStore, maxThreads)
     }
 
     override fun getModuleId(): Int {
@@ -39,7 +41,7 @@ class RxModule<T : Any> private constructor(private val id: Int, private val rxM
         }
     }
 
-    class Builder<T : Any>(private val id: Int) {
+    class Builder<T : Any>(private val id: Int, private var maxThreads: Int) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
 
@@ -48,8 +50,15 @@ class RxModule<T : Any> private constructor(private val id: Int, private val rxM
             return this
         }
 
+        fun setThreadsLimit(limit: Int): Builder<T> {
+            if (limit > 0) {
+                maxThreads = limit
+            }
+            return this
+        }
+
         fun build(): RxModule<T> {
-            return RxModule(id, RxMethodsExecutor(rxMethods))
+            return RxModule(id, RxMethodsExecutor(rxMethods), maxThreads)
         }
     }
 }

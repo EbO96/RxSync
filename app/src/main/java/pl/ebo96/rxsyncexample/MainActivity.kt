@@ -1,7 +1,6 @@
 package pl.ebo96.rxsyncexample
 
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
@@ -16,11 +15,9 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
         setContentView(R.layout.activity_main)
 
         rxExecutor = RxExecutor.Builder<Any>()
-                .register(ExampleModule2())
                 .register(ExampleModule())
                 .setResultListener(object : RxResultListener<Any> {
                     override fun onResult(data: Any?) {
-                        Log.d(RxExecutor.TAG, "on result -> $data, thread -> ${Thread.currentThread().name}")
                     }
 
                     override fun onUiResult(data: Any?) {
@@ -83,6 +80,5 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
     private fun setResultOnTextView(text: String) {
         resultTextView.text = "${resultTextView.text}\n$text\n----------------------------"
-        Log.d(RxExecutor.TAG, text)
     }
 }

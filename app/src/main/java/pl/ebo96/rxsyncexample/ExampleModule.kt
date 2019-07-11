@@ -8,16 +8,17 @@ class ExampleModule : ModuleBuilder<Any>() {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<Any> {
         return builder
+                .setThreadsLimit(2)
                 .register(buildMethod(false, TestResult("Before modification")).doSomethingWithResult {
                     it?.testText = "After modification"
                 })
-                .register(buildMethod(true, 2, 500, true))
-                .register(buildMethod(true, 3, 10, true))
-                .register(buildMethod(false, 4, 200))
-                .register(buildMethod(true, 5, 300, false))
-                .register(buildMethod(false, 6, 400))
-                .register(buildMethod(true, 7, 100, false))
-                .register(buildMethod(false, 8, 10))
+                .register(buildMethod(false, 2, 1000, false))
+                .register(buildMethod(false, 3, 1000, false))
+                .register(buildMethod(true, 4, 1000))
+                .register(buildMethod(true, 5, 1000, false))
+                .register(buildMethod(true, 6, 1000))
+                .register(buildMethod(true, 7, 1000, false))
+                .register(buildMethod(true, 8, 1000))
                 .build()
     }
 

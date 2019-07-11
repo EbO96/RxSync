@@ -24,7 +24,6 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
 
         return Flowable.concat(modulesMethodsAsObservable)
                 .listenForResults()
-                .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
                 .doOnComplete { rxProgressListener?.completed() }

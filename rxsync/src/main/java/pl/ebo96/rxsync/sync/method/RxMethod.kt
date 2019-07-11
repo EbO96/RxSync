@@ -43,14 +43,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private fun Flowable<out T>.mapToMethodResult(): Flowable<MethodResult<out T>> {
         return flatMap {
-            Flowable.just(MethodResult(this@RxMethod, it)).subscribeOn(RxExecutor.SCHEDULER)
+            Flowable.just(MethodResult(this@RxMethod, it))
         }
     }
 
     fun doSomethingWithResult(result: (T?) -> Unit): RxMethod<T> {
         this.operation = this.operation.flatMap {
             result(it.result)
-            Flowable.just(it).subscribeOn(RxExecutor.SCHEDULER)
+            Flowable.just(it)
         }
         return this
     }
@@ -66,11 +66,10 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private fun prepareSyncOperation(operation: Flowable<T>): Flowable<T> {
         return operation
-                .subscribeOn(RxExecutor.SCHEDULER)
-                .retry { attempts, error ->
-                    Log.d(RxExecutor.TAG, "retry sync -> $attempts, ${error.message} on thread -> ${Thread.currentThread().name}")
-                    attempts < retryAttempts
+                .doOnNext {
+                    Log.d(RxExecutor.TAG, "sync: $it -> ${Thread.currentThread()}")
                 }
+                .retry(retryAttempts)
                 .retryWhen { getMethodRetryStrategy<T>(rxMethodEventHandler, it) }
                 .onErrorResumeNext(Function { error ->
                     if (error is Abort) {
@@ -82,11 +81,9 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     private fun prepareAsyncOperation(operation: Flowable<T>): Flowable<T> {
-        return operation.subscribeOn(RxExecutor.SCHEDULER)
-                .retry { attempts, error ->
-                    Log.d(RxExecutor.TAG, "retry async -> $attempts, ${error.message}")
-                    attempts < retryAttempts
-                }
+        return operation.doOnNext {
+            Log.d(RxExecutor.TAG, "async: $it -> ${Thread.currentThread()}")
+        }.retry(retryAttempts)
     }
 
     override fun getMethodId(): Int = id
@@ -104,7 +101,6 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         fun <T : Any> getMethodRetryStrategy(rxMethodEventHandler: RxMethodEventHandler?, errorFlowable: Flowable<Throwable>): Flowable<T> {
             return errorFlowable.flatMap { error ->
                 Flowable.create(FlowableOnSubscribe<T> { emitter ->
-                    Log.d(RxExecutor.TAG, "______________________________________________________________")
                     if (rxMethodEventHandler == null) {
                         emitter.onError(error)
                         emitter.onComplete()
