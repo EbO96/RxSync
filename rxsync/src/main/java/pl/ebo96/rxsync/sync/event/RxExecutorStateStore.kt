@@ -1,7 +1,7 @@
 package pl.ebo96.rxsync.sync.event
 
-import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
+import org.reactivestreams.Subscription
 import pl.ebo96.rxsync.sync.executor.RxExecutorInfo
 import pl.ebo96.rxsync.sync.method.MethodResult
 import java.util.concurrent.ConcurrentHashMap
@@ -44,7 +44,7 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
         rxProgressListener?.onProgress(rxProgress)
     }
 
-    fun reset(): Consumer<Disposable> = Consumer {
+    fun reset(): Consumer<in Subscription> = Consumer {
         doneMethods.clear()
     }
 }

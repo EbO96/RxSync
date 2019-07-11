@@ -1,6 +1,6 @@
 package pl.ebo96.rxsync.sync.executor
 
-import io.reactivex.Observable
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
@@ -22,7 +22,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
             it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
         }
 
-        return Observable.concat(modulesMethodsAsObservable)
+        return Flowable.concat(modulesMethodsAsObservable)
                 .listenForResults()
                 .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
@@ -31,10 +31,10 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResultOnUi(rxResultListener), errorHandler)
     }
 
-    private fun Observable<MethodResult<out T>>.listenForResults(): Observable<MethodResult<out T>> = this.compose {
+    private fun Flowable<MethodResult<out T>>.listenForResults(): Flowable<MethodResult<out T>> = this.compose {
         it.flatMap { methodResult ->
             rxResultListener?.onResult(methodResult.result)
-            Observable.just(methodResult)
+            Flowable.just(methodResult)
         }
     }
 }

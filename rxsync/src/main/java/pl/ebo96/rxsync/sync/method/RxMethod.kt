@@ -2,7 +2,9 @@ package pl.ebo96.rxsync.sync.method
 
 import android.annotation.SuppressLint
 import android.util.Log
-import io.reactivex.Observable
+import io.reactivex.BackpressureStrategy
+import io.reactivex.Flowable
+import io.reactivex.FlowableOnSubscribe
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.functions.Function
@@ -20,41 +22,41 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private val id: Int by lazy { rxExecutorStateStore.generateMethodId() }
 
-    private lateinit var operation: Observable<MethodResult<out T>>
+    private lateinit var operation: Flowable<MethodResult<out T>>
 
-    fun getOperation(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<MethodResult<out T>> {
+    fun getOperation(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<MethodResult<out T>> {
         this.rxMethodEventHandler = rxMethodEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
         return operation
     }
 
-    fun registerOperation(operation: Observable<T>): RxMethod<T> {
+    fun registerOperation(operation: Flowable<T>): RxMethod<T> {
         this.operation = prepareOperation(operation).mapToMethodResult()
         return this
     }
 
     fun registerOperation(getOperation: () -> T): RxMethod<T> {
-        val operation = Observable.fromCallable { getOperation() }
+        val operation = Flowable.fromCallable { getOperation() }
         registerOperation(operation)
         return this
     }
 
-    private fun Observable<out T>.mapToMethodResult(): Observable<MethodResult<out T>> {
+    private fun Flowable<out T>.mapToMethodResult(): Flowable<MethodResult<out T>> {
         return flatMap {
-            Observable.just(MethodResult(this@RxMethod, it)).subscribeOn(RxExecutor.SCHEDULER)
+            Flowable.just(MethodResult(this@RxMethod, it)).subscribeOn(RxExecutor.SCHEDULER)
         }
     }
 
     fun doSomethingWithResult(result: (T?) -> Unit): RxMethod<T> {
         this.operation = this.operation.flatMap {
             result(it.result)
-            Observable.just(it).subscribeOn(RxExecutor.SCHEDULER)
+            Flowable.just(it).subscribeOn(RxExecutor.SCHEDULER)
         }
         return this
     }
 
     @SuppressLint("CheckResult")
-    private fun prepareOperation(operation: Observable<T>): Observable<out T> {
+    private fun prepareOperation(operation: Flowable<T>): Flowable<out T> {
         return if (async) {
             prepareAsyncOperation(operation)
         } else {
@@ -62,7 +64,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         }
     }
 
-    private fun prepareSyncOperation(operation: Observable<T>): Observable<T> {
+    private fun prepareSyncOperation(operation: Flowable<T>): Flowable<T> {
         return operation
                 .subscribeOn(RxExecutor.SCHEDULER)
                 .retry { attempts, error ->
@@ -72,14 +74,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
                 .retryWhen { getMethodRetryStrategy<T>(rxMethodEventHandler, it) }
                 .onErrorResumeNext(Function { error ->
                     if (error is Abort) {
-                        Observable.error(error)
+                        Flowable.error(error)
                     } else {
-                        Observable.empty<T>()
+                        Flowable.empty<T>()
                     }
                 })
     }
 
-    private fun prepareAsyncOperation(operation: Observable<T>): Observable<T> {
+    private fun prepareAsyncOperation(operation: Flowable<T>): Flowable<T> {
         return operation.subscribeOn(RxExecutor.SCHEDULER)
                 .retry { attempts, error ->
                     Log.d(RxExecutor.TAG, "retry async -> $attempts, ${error.message}")
@@ -99,18 +101,18 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
             return RxMethod(async, retryAttempts)
         }
 
-        fun <T : Any> getMethodRetryStrategy(rxMethodEventHandler: RxMethodEventHandler?, errorObservable: Observable<Throwable>): Observable<T> {
-            return errorObservable.flatMap { error ->
-                Observable.create<T> { emitter ->
+        fun <T : Any> getMethodRetryStrategy(rxMethodEventHandler: RxMethodEventHandler?, errorFlowable: Flowable<Throwable>): Flowable<T> {
+            return errorFlowable.flatMap { error ->
+                Flowable.create(FlowableOnSubscribe<T> { emitter ->
                     Log.d(RxExecutor.TAG, "______________________________________________________________")
                     if (rxMethodEventHandler == null) {
                         emitter.onError(error)
                         emitter.onComplete()
-                        return@create
+                        return@FlowableOnSubscribe
                     }
 
                     val eventConsumer = Consumer<RxMethodEvent> { event ->
-                        if (!emitter.isDisposed) {
+                        if (!emitter.isCancelled) {
                             @Suppress("UNCHECKED_CAST")
                             when (event) {
                                 RxMethodEvent.NEXT -> emitter.onError(error)
@@ -124,7 +126,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
                     val rxMethodEventConsumer = RxMethodEventConsumer(eventConsumer)
 
                     rxMethodEventHandler.onNewRxEvent(error, rxMethodEventConsumer)
-                }.subscribeOn(AndroidSchedulers.mainThread())
+                }, BackpressureStrategy.LATEST).subscribeOn(AndroidSchedulers.mainThread())
             }
         }
     }
