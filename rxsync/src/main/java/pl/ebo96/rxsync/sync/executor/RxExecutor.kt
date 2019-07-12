@@ -15,7 +15,7 @@ import pl.ebo96.rxsync.sync.event.*
  * @param rxModulesExecutor it is responsible for executing registered modules
  * @see RxModulesExecutor
  *
- * @param rxErrorListenerl user interface which provide information about execution failures
+ * @param rxErrorListener user interface which provide information about execution failures
  */
 class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
