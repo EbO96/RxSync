@@ -8,6 +8,7 @@ class ExampleModule2 : ModuleBuilder<String>() {
 
     override fun build(builder: RxModule.Builder<String>): RxModule<String> {
         return builder
+                .deferred()
                 .register(buildMethod(true, "Hello", 1000, false))
                 .register(buildMethod(true, "There", 1000, false))
                 .register(buildMethod(true, "Or", 1000, false))

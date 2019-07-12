@@ -6,10 +6,12 @@ import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.executor.RxMethodsExecutor
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
+import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 
 class RxModule<T : Any> private constructor(private val id: Int,
                                             private val rxMethodsExecutor: RxMethodsExecutor<out T>,
-                                            private val maxThreads: Int)
+                                            private val maxThreads: Int,
+                                            val deferred: Boolean)
     : ModuleInfo, Comparable<RxModule<T>> {
 
     fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
@@ -41,9 +43,11 @@ class RxModule<T : Any> private constructor(private val id: Int,
         }
     }
 
-    class Builder<T : Any>(private val id: Int, private var maxThreads: Int) {
+    class Builder<T : Any>(private val id: Int, private var maxThreads: Int, private var deferred: Boolean = false) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
+        private var asyncMethodsRetryAttempts = RxRetryStrategy.DEFAULT_RETRY_ATTEMPTS
+        private var asyncMethodsAttemptsDelay = RxRetryStrategy.DEFAULT_ATTEMPTS_DELAY_IN_MILLIS
 
         fun register(rxMethod: RxMethod<out T>): Builder<T> {
             rxMethods.add(rxMethod)
@@ -57,8 +61,23 @@ class RxModule<T : Any> private constructor(private val id: Int,
             return this
         }
 
+        fun asyncMethodsRetryAttempts(attempts: Long): Builder<T> {
+            asyncMethodsRetryAttempts = attempts
+            return this
+        }
+
+        fun asyncMethodsAttemptsDelay(delay: Long): Builder<T> {
+            asyncMethodsAttemptsDelay = delay
+            return this
+        }
+
+        fun deferred(): Builder<T> {
+            deferred = true
+            return this
+        }
+
         fun build(): RxModule<T> {
-            return RxModule(id, RxMethodsExecutor(rxMethods), maxThreads)
+            return RxModule(id, RxMethodsExecutor(rxMethods, asyncMethodsRetryAttempts, asyncMethodsAttemptsDelay), maxThreads, deferred)
         }
     }
 }

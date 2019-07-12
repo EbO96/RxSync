@@ -8,6 +8,7 @@ import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
+import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 
 /**
  * Execute module methods. Methods are grouped at two group.
@@ -16,7 +17,9 @@ import pl.ebo96.rxsync.sync.method.RxMethod
  *
  * @param methods synchronous and asynchronous methods
  */
-class RxMethodsExecutor<T : Any> constructor(private val methods: ArrayList<RxMethod<out T>>) {
+class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>,
+                                 private val asyncMethodsRetryAttempts: Long,
+                                 private val asyncMethodsAttemptsDelay: Long) {
 
     @SuppressLint("CheckResult")
     fun prepare(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore, maxThreads: Int): Flowable<out MethodResult<out T>> {
@@ -47,7 +50,11 @@ class RxMethodsExecutor<T : Any> constructor(private val methods: ArrayList<RxMe
                 .runOn(Schedulers.computation())
                 .sequential(maxThreads)
                 .retryWhen { error: Flowable<Throwable> ->
-                    RxMethod.getMethodRetryStrategy<T>(rxMethodEventHandler, error)
+                    RxRetryStrategy<T>(
+                            rxMethodEventHandler,
+                            asyncMethodsRetryAttempts,
+                            asyncMethodsAttemptsDelay
+                    ).create(error)
                 }
                 .onErrorResumeNext(Function { error ->
                     if (error is RxMethod.Abort) {
@@ -67,8 +74,6 @@ class RxMethodsExecutor<T : Any> constructor(private val methods: ArrayList<RxMe
     }
 
     fun methodsCount(): Int = methods.size
-
-    class RetryEvent
 
     companion object {
         private const val ASYNC = true

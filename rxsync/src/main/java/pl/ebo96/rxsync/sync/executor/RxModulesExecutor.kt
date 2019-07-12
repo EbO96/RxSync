@@ -18,11 +18,21 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
                                              private val rxExecutorStateStore: RxExecutorStateStore) {
 
     fun execute(errorHandler: Consumer<Throwable>): Disposable {
-        val modulesMethodsAsObservable = rxModules.map {
-            it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
-        }
 
-        return Flowable.concat(modulesMethodsAsObservable)
+        val modules = rxModules.groupBy { it.deferred }
+
+        val nonDeferred = modules[NON_DEFERRED_MODULES] ?: emptyList()
+        val deferred = modules[DEFERRED_MODULES] ?: emptyList()
+
+        val nonDeferredModulesMethods = Flowable.concat(nonDeferred.map {
+            it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
+        })
+
+        val deferredModulesMethods = Flowable.concat(deferred.map {
+            it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
+        })
+
+        return Flowable.concat(nonDeferredModulesMethods, deferredModulesMethods)
                 .listenForResults()
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
@@ -35,5 +45,10 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
             rxResultListener?.onResult(methodResult.result)
             Flowable.just(methodResult)
         }
+    }
+
+    companion object {
+        private const val NON_DEFERRED_MODULES = false
+        private const val DEFERRED_MODULES = true
     }
 }
