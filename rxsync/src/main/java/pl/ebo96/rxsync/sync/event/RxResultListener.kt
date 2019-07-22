@@ -2,7 +2,7 @@ package pl.ebo96.rxsync.sync.event
 
 interface RxResultListener<T : Any> {
 
-    fun onResult(data: T?)
+    fun onNextResult(data: T?)
 
-    fun onUiResult(data: T?)
+    fun onNextUiResult(data: T?)
 }

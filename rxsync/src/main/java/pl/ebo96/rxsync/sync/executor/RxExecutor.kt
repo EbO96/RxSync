@@ -8,6 +8,7 @@ import io.reactivex.plugins.RxJavaPlugins
 import pl.ebo96.rxsync.sync.RxDevice
 import pl.ebo96.rxsync.sync.builder.ModuleBuilder
 import pl.ebo96.rxsync.sync.event.*
+import pl.ebo96.rxsync.sync.module.RxModule
 
 /**
  * This class is responsible for starting and cancelling execution of registered modules.
@@ -108,19 +109,20 @@ class RxExecutor<T : Any> private constructor(
             val rxExecutorInfo = RxExecutorInfo()
             val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
 
-            val rxModules = rxModulesBuilders
-                    .asSequence()
-                    .map {
-                        it.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
-                    }
-                    .onEach {
-                        rxExecutorInfo.saveModuleInfo(it)
-                    }
-                    .toList()
+            val rxModules = ArrayList<RxModule<out T>>()
+            val deferredModulesBuilders = ArrayList<ModuleBuilder<out T>>()
 
-            rxModulesBuilders.clear()
+            rxModulesBuilders.forEach { moduleBuilder ->
+                if (moduleBuilder.isDeferred()) {
+                    deferredModulesBuilders.add(moduleBuilder)
+                } else {
+                    val module = moduleBuilder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
+                    rxExecutorInfo.saveModuleInfo(module)
+                    rxModules.add(module)
+                }
+            }
 
-            val modulesExecutor = RxModulesExecutor(rxModules, rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
+            val modulesExecutor = RxModulesExecutor(rxModules, deferredModulesBuilders, maxThreads, rxExecutorInfo, rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
             return RxExecutor(modulesExecutor, rxErrorListener)
         }
     }

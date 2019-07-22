@@ -43,7 +43,7 @@ class RxModule<T : Any> private constructor(private val id: Int,
         }
     }
 
-    class Builder<T : Any>(private val id: Int, private var maxThreads: Int, private var deferred: Boolean = false) {
+    class Builder<T : Any>(private val id: Int, private var maxThreads: Int, private var deferred: Boolean) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
         private var asyncMethodsRetryAttempts = RxRetryStrategy.DEFAULT_RETRY_ATTEMPTS
@@ -68,11 +68,6 @@ class RxModule<T : Any> private constructor(private val id: Int,
 
         fun asyncMethodsAttemptsDelay(delay: Long): Builder<T> {
             asyncMethodsAttemptsDelay = delay
-            return this
-        }
-
-        fun deferred(): Builder<T> {
-            deferred = true
             return this
         }
 

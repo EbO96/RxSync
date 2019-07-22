@@ -1,6 +1,7 @@
 package pl.ebo96.rxsyncexample
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
@@ -18,11 +19,20 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                 .register(ExampleModule())
                 .register(ExampleModule2())
                 .setResultListener(object : RxResultListener<Any> {
-                    override fun onResult(data: Any?) {
+                    override fun onNextResult(data: Any?) {
+                        val responseBody = data as? DogsApiResponse
+
+                        if (responseBody != null) {
+                            RestApi.photos.add(responseBody.message)
+                        }
+                        Log.i("executor", "Result $data, on thread ${Thread.currentThread().name
+                        }")
                     }
 
-                    override fun onUiResult(data: Any?) {
+                    override fun onNextUiResult(data: Any?) {
                         setResultOnTextView("$data")
+                        Log.i("executor", "Result $data, on ui thread ${Thread.currentThread().name
+                        }")
                     }
                 })
                 .setProgressListener(object : RxProgressListener {

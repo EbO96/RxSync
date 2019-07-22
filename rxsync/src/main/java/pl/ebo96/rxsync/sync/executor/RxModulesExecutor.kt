@@ -4,6 +4,7 @@ import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
+import pl.ebo96.rxsync.sync.builder.ModuleBuilder
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.event.RxProgressListener
@@ -12,6 +13,9 @@ import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.module.RxModule
 
 class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModule<out T>>,
+                                             private val rxModulesBuilders: List<ModuleBuilder<out T>>,
+                                             private val maxThreads: Int,
+                                             private val rxExecutorInfo: RxExecutorInfo,
                                              private val rxProgressListener: RxProgressListener?,
                                              private val rxResultListener: RxResultListener<T>?,
                                              private val rxMethodEventHandler: RxMethodEventHandler?,
@@ -19,18 +23,22 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
 
     fun execute(errorHandler: Consumer<Throwable>): Disposable {
 
-        val modules = rxModules.groupBy { it.deferred }
-
-        val nonDeferred = modules[NON_DEFERRED_MODULES] ?: emptyList()
-        val deferred = modules[DEFERRED_MODULES] ?: emptyList()
-
-        val nonDeferredModulesMethods = Flowable.concat(nonDeferred.map {
+        val nonDeferredModulesMethods = Flowable.concat(rxModules.map {
             it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
         })
 
-        val deferredModulesMethods = Flowable.concat(deferred.map {
-            it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
-        })
+        val deferredModulesMethods = Flowable
+                .fromCallable {
+                    rxModulesBuilders.map { builder ->
+                        val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
+                        val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
+                        rxExecutorInfo.saveModuleInfo(module)
+                        moduleMethods
+                    }
+                }
+                .flatMap { modules ->
+                    Flowable.concat(modules)
+                }
 
         return Flowable.concat(nonDeferredModulesMethods, deferredModulesMethods)
                 .listenForResults()
@@ -42,7 +50,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
 
     private fun Flowable<MethodResult<out T>>.listenForResults(): Flowable<MethodResult<out T>> = this.compose {
         it.flatMap { methodResult ->
-            rxResultListener?.onResult(methodResult.result)
+            rxResultListener?.onNextResult(methodResult.result)
             Flowable.just(methodResult)
         }
     }

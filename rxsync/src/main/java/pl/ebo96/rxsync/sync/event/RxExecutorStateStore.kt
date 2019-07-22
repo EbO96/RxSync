@@ -40,7 +40,7 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
                 total = getAllMethodsCount()
         )
 
-        rxResultListener?.onUiResult(methodResult.result)
+        rxResultListener?.onNextUiResult(methodResult.result)
         rxProgressListener?.onProgress(rxProgress)
     }
 
