@@ -11,7 +11,7 @@ import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 class RxModule<T : Any> private constructor(private val id: Int,
                                             private val rxMethodsExecutor: RxMethodsExecutor<out T>,
                                             private val maxThreads: Int,
-                                            val deferred: Boolean)
+                                            private val deferred: Boolean)
     : ModuleInfo, Comparable<RxModule<T>> {
 
     fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
@@ -24,6 +24,14 @@ class RxModule<T : Any> private constructor(private val id: Int,
 
     override fun getMethodsCount(): Int {
         return rxMethodsExecutor.methodsCount()
+    }
+
+    override fun removeModuleMethods() {
+        rxMethodsExecutor.removeMethods()
+    }
+
+    override fun isDeferred(): Boolean {
+        return deferred
     }
 
     override fun equals(other: Any?): Boolean {

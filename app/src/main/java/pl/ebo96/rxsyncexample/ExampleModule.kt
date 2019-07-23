@@ -10,17 +10,11 @@ class ExampleModule : ModuleBuilder<Any>() {
         return builder
                 .asyncMethodsAttemptsDelay(500)
                 .asyncMethodsRetryAttempts(2)
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
-                .register(RxMethod.create<DogsApiResponse>(false).registerOperation(RestApi.dogsRestService.getRandomPhoto()))
+                .register(RxMethod.create<Int>(false).registerOperation { 1 })
+                .register(RxMethod.create<Int>(false).registerOperation { 2 })
+                .register(RxMethod.create<Int>(false).registerOperation { 3 })
+                .register(RxMethod.create<Int>(false).registerOperation { 4 })
+                .register(RxMethod.create<Int>(false).registerOperation { 5 })
                 .build()
     }
 }

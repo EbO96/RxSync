@@ -14,4 +14,12 @@ class RxExecutorInfo {
     fun getMethodsCount(): Int {
         return modulesInfo.sumBy { it.getMethodsCount() }
     }
+
+    fun removeMethods() {
+        return modulesInfo.forEach {
+            if (it.isDeferred()) {
+                it.removeModuleMethods()
+            }
+        }
+    }
 }

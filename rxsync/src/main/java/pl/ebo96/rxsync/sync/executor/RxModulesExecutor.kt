@@ -4,7 +4,6 @@ import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
-import pl.ebo96.rxsync.sync.builder.ModuleBuilder
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.event.RxProgressListener
@@ -13,9 +12,7 @@ import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.module.RxModule
 
 class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModule<out T>>,
-                                             private val rxModulesBuilders: List<ModuleBuilder<out T>>,
-                                             private val maxThreads: Int,
-                                             private val rxExecutorInfo: RxExecutorInfo,
+                                             private val rxDeferredModules: Flowable<MethodResult<out T>>,
                                              private val rxProgressListener: RxProgressListener?,
                                              private val rxResultListener: RxResultListener<T>?,
                                              private val rxMethodEventHandler: RxMethodEventHandler?,
@@ -27,20 +24,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
             it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
         })
 
-        val deferredModulesMethods = Flowable
-                .fromCallable {
-                    rxModulesBuilders.map { builder ->
-                        val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
-                        val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
-                        rxExecutorInfo.saveModuleInfo(module)
-                        moduleMethods
-                    }
-                }
-                .flatMap { modules ->
-                    Flowable.concat(modules)
-                }
-
-        return Flowable.concat(nonDeferredModulesMethods, deferredModulesMethods)
+        return Flowable.concat(nonDeferredModulesMethods, rxDeferredModules)
                 .listenForResults()
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())

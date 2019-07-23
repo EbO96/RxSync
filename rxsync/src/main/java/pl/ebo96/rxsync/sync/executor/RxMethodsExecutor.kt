@@ -75,6 +75,10 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
 
     fun methodsCount(): Int = methods.size
 
+    fun removeMethods() {
+        methods.clear()
+    }
+
     companion object {
         private const val ASYNC = true
         private const val NON_ASYNC = false

@@ -8,6 +8,7 @@ abstract class ModuleBuilder<T : Any> {
     private var module: RxModule<out T>? = null
 
     fun createModuleAndGet(id: Int, maxThreads: Int): RxModule<out T> = module
+            .takeIf { !isDeferred() }
             ?: this.build(RxModule.Builder(id, maxThreads, isDeferred())).also { module = it }
 
     /**

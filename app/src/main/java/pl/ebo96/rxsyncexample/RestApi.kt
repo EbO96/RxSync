@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RestApi {
 
-    val photos: ArrayList<String> = arrayListOf()
+    val results: ArrayList<String> = arrayListOf()
 
     val dogsRestService: DogsRestService = let {
         val retrofit = Retrofit.Builder()

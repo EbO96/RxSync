@@ -1,6 +1,7 @@
 package pl.ebo96.rxsync.sync.executor
 
 import io.reactivex.Completable
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
@@ -8,6 +9,7 @@ import io.reactivex.plugins.RxJavaPlugins
 import pl.ebo96.rxsync.sync.RxDevice
 import pl.ebo96.rxsync.sync.builder.ModuleBuilder
 import pl.ebo96.rxsync.sync.event.*
+import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.module.RxModule
 
 /**
@@ -122,7 +124,20 @@ class RxExecutor<T : Any> private constructor(
                 }
             }
 
-            val modulesExecutor = RxModulesExecutor(rxModules, deferredModulesBuilders, maxThreads, rxExecutorInfo, rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
+            val rxDeferredModules: Flowable<MethodResult<out T>> = Flowable
+                    .fromCallable {
+                        deferredModulesBuilders.map { builder ->
+                            val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
+                            val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
+                            rxExecutorInfo.saveModuleInfo(module)
+                            moduleMethods
+                        }
+                    }
+                    .flatMap { modules ->
+                        Flowable.concat(modules)
+                    }
+
+            val modulesExecutor = RxModulesExecutor(rxModules, rxDeferredModules, rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
             return RxExecutor(modulesExecutor, rxErrorListener)
         }
     }

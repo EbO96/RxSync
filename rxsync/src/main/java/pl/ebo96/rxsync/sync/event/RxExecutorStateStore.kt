@@ -46,5 +46,6 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
 
     fun reset(): Consumer<in Subscription> = Consumer {
         doneMethods.clear()
+        rxExecutorInfo.removeMethods()
     }
 }
