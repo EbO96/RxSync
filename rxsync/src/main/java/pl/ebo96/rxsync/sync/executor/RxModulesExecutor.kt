@@ -1,13 +1,12 @@
 package pl.ebo96.rxsync.sync.executor
 
 import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
-import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
-import pl.ebo96.rxsync.sync.event.RxProgressListener
-import pl.ebo96.rxsync.sync.event.RxResultListener
+import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.module.RxModule
 
@@ -18,18 +17,33 @@ class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModul
                                              private val rxMethodEventHandler: RxMethodEventHandler?,
                                              private val rxExecutorStateStore: RxExecutorStateStore) {
 
-    fun execute(errorHandler: Consumer<Throwable>): Disposable {
+    fun execute(errorHandler: Consumer<Throwable>, chronometer: Observable<Long>?, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
 
         val nonDeferredModulesMethods = Flowable.concat(rxModules.map {
             it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
         })
 
-        return Flowable.concat(nonDeferredModulesMethods, rxDeferredModules)
+        val elapsedTime: Disposable? = chronometer
+                ?.doOnNext { seconds ->
+                    rxElapsedTimeListener?.elapsed(seconds)
+                }
+                ?.subscribe()
+
+        val modules: Disposable = Flowable.concat(nonDeferredModulesMethods, rxDeferredModules)
                 .listenForResults()
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
-                .doOnComplete { rxProgressListener?.completed() }
+                .doOnComplete {
+                    elapsedTime?.dispose()
+                    rxProgressListener?.completed()
+                }
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResultOnUi(rxResultListener), errorHandler)
+
+        return CompositeDisposable(modules).also {
+            if (elapsedTime != null) {
+                it.add(elapsedTime)
+            }
+        }
     }
 
     private fun Flowable<MethodResult<out T>>.listenForResults(): Flowable<MethodResult<out T>> = this.compose {

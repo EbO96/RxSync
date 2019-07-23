@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                 .setResultListener(object : RxResultListener<Any> {
                     override fun onNextResult(data: Any?) {
                         RestApi.results.add("$data")
-                        Log.i("executor", "Result $data, on thread ${Thread.currentThread().name}")
+                        Log.i(RxExecutor.TAG, "Result $data, on thread ${Thread.currentThread().name}")
                     }
 
                     override fun onNextUiResult(data: Any?) {
@@ -39,6 +39,11 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                     override fun completed() {
                         RestApi.results.clear()
                         setResultOnTextView("Completed")
+                    }
+                })
+                .setElapsedTimeListener(object : RxElapsedTimeListener {
+                    override fun elapsed(seconds: Long) {
+                        elapsedTimeTextView.text = "$seconds [s]"
                     }
                 })
                 .setErrorListener(object : RxErrorListener {

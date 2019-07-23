@@ -2,6 +2,7 @@ package pl.ebo96.rxsync.sync.executor
 
 import io.reactivex.Completable
 import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
@@ -11,6 +12,7 @@ import pl.ebo96.rxsync.sync.builder.ModuleBuilder
 import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.module.RxModule
+import java.util.concurrent.TimeUnit
 
 /**
  * This class is responsible for starting and cancelling execution of registered modules.
@@ -22,11 +24,13 @@ import pl.ebo96.rxsync.sync.module.RxModule
  */
 class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
-        private val rxErrorListener: RxErrorListener) {
+        private val rxErrorListener: RxErrorListener,
+        private val rxElapsedTimeListener: RxElapsedTimeListener?,
+        private val chronometer: Observable<Long>?) {
 
     private var compositeDisposable = CompositeDisposable()
-
     private val onUiThreadErrorHandler: Consumer<Throwable> = getErrorHandlerOnUiThread()
+
 
     init {
         RxJavaPlugins.setErrorHandler(onUiThreadErrorHandler)
@@ -37,7 +41,7 @@ class RxExecutor<T : Any> private constructor(
      */
     fun start() {
         cancel()
-        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler))
+        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, chronometer, rxElapsedTimeListener))
     }
 
     /**
@@ -63,10 +67,11 @@ class RxExecutor<T : Any> private constructor(
         private val rxModulesBuilders = ArrayList<ModuleBuilder<out T>>()
         private lateinit var rxErrorListener: RxErrorListener
         private var rxProgressListener: RxProgressListener? = null
+        private var rxElapsedTimeListener: RxElapsedTimeListener? = null
         private var rxResultListener: RxResultListener<T>? = null
         private var rxMethodEventHandler: RxMethodEventHandler? = null
         private var maxThreads = RxDevice.defaultThreadsLimit
-
+        private var chronometer: Observable<Long>? = null
 
         fun register(rxModule: ModuleBuilder<out T>): Builder<T> {
             rxModulesBuilders.add(rxModule)
@@ -80,6 +85,14 @@ class RxExecutor<T : Any> private constructor(
 
         fun setProgressListener(rxProgressListener: RxProgressListener?): Builder<T> {
             this.rxProgressListener = rxProgressListener
+            return this
+        }
+
+        fun setElapsedTimeListener(rxElapsedTimeListener: RxElapsedTimeListener): Builder<T> {
+            this.rxElapsedTimeListener = rxElapsedTimeListener
+            chronometer = Observable.interval(1, TimeUnit.SECONDS)
+                    .takeUntil { false }
+                    .subscribeOn(AndroidSchedulers.mainThread())
             return this
         }
 
@@ -138,7 +151,7 @@ class RxExecutor<T : Any> private constructor(
                     }
 
             val modulesExecutor = RxModulesExecutor(rxModules, rxDeferredModules, rxProgressListener, rxResultListener, rxMethodEventHandler, rxExecutorStateStore)
-            return RxExecutor(modulesExecutor, rxErrorListener)
+            return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, chronometer)
         }
     }
 

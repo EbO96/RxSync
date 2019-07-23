@@ -27,13 +27,15 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
         //Group methods
         val methodsGroups: Map<Boolean, List<RxMethod<out T>>> = methods.groupBy { it.async }
 
-        //Prepare synchronous methods
-        val syncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[NON_ASYNC]
-                ?.map { it.getOperation(rxMethodEventHandler, rxExecutorStateStore) }
-                ?: emptyList()
-
         //Create schedulers for asynchronous methods
         val scheduler = RxScheduler.create(maxThreads)
+
+        //Prepare synchronous methods
+        val syncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[NON_ASYNC]
+                ?.map { rxMethod ->
+                    rxMethod.getOperation(rxMethodEventHandler, rxExecutorStateStore).subscribeOn(scheduler)
+                }
+                ?: emptyList()
 
         //Prepare asynchronous methods and subscribe every method on previously created scheduler.
         //Scheduler can limit number of threads used
@@ -65,12 +67,13 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
                 })
 
         //Execute synchronous and next asynchronous methods. Wait for all methods and go to next module
-        return Flowable.concat(
-                //First execute all synchronous methods one by one
-                Flowable.concat(syncMethods).subscribeOn(Schedulers.io()),
-                //Next, execute all asynchronous methods
-                asynchronousOperations
-        )
+        return Flowable
+                .concat(
+                        //First execute all synchronous methods one by one
+                        Flowable.concat(syncMethods),
+                        //Next, execute all asynchronous methods
+                        asynchronousOperations
+                )
     }
 
     fun methodsCount(): Int = methods.size
