@@ -8,6 +8,12 @@ import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
 import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 
+/**
+ * Modules is object which contains method to execute in defined order if methods are synchronous.
+ * For asynchronous methods order isn't guarantee
+ *
+ * Module can be marked as 'deferred' which means that such module will be executed after not deferred ones
+ */
 class RxModule<T : Any> private constructor(private val id: Int,
                                             private val rxMethodsExecutor: RxMethodsExecutor<out T>,
                                             private val maxThreads: Int,

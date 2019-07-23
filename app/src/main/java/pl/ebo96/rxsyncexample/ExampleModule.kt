@@ -17,4 +17,8 @@ class ExampleModule : ModuleBuilder<Any>() {
                 .register(RxMethod.create<Int>(false).registerOperation { 5 })
                 .build()
     }
+
+    override fun tag(): Any {
+        return "ExampleModule"
+    }
 }

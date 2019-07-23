@@ -15,7 +15,12 @@ class ExampleModule2 : ModuleBuilder<Any>() {
                 .build()
     }
 
+    override fun tag(): Any {
+        return "Example deferred module"
+    }
+
     override fun isDeferred(): Boolean {
         return true
     }
+
 }
