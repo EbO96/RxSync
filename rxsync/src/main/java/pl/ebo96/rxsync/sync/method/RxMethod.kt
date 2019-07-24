@@ -10,6 +10,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private val id: Int by lazy { rxExecutorStateStore.generateMethodId() }
     private lateinit var operation: Flowable<MethodResult<out T>>
+    private var payload: Any? = null
     private var rxMethodEventHandler: RxMethodEventHandler? = null
     private lateinit var rxExecutorStateStore: RxExecutorStateStore
     private lateinit var rxRetryStrategy: RxRetryStrategy<T>
@@ -33,9 +34,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         return this
     }
 
+    fun withPayload(payload: Any?): RxMethod<T> {
+        this.payload = payload
+        return this
+    }
+
     private fun Flowable<out T>.mapToMethodResult(): Flowable<MethodResult<out T>> {
         return flatMap {
-            Flowable.just(MethodResult(this@RxMethod, it))
+            Flowable.just(MethodResult(this@RxMethod, it, payload))
         }
     }
 

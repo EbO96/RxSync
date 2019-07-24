@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.executor.RxExecutor
+import pl.ebo96.rxsync.sync.method.MethodResult
 
 class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
@@ -19,12 +20,12 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                 .register(ExampleModule())
                 .register(ExampleModule2())
                 .setResultListener(object : RxResultListener<Any> {
-                    override fun onNextResult(data: Any?) {
-                        RestApi.results.add("$data")
+                    override fun onNextResult(data: MethodResult<out Any>) {
+                        RestApi.results.add("${data.result}")
                         Log.i(RxExecutor.TAG, "Result $data, on thread ${Thread.currentThread().name}")
                     }
 
-                    override fun onNextUiResult(data: Any?) {
+                    override fun onNextUiResult(data: MethodResult<out Any>) {
                         setResultOnTextView("$data")
                     }
                 })
