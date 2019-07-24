@@ -71,6 +71,12 @@
         android:layout_height="wrap_content"
         android:text="0%" />
 
+    <TextView
+        android:id="@+id/elapsedTimeTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0 [s]" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">

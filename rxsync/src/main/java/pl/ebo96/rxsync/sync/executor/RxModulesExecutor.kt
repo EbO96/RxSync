@@ -1,37 +1,59 @@
 package pl.ebo96.rxsync.sync.executor
 
+import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
-import pl.ebo96.rxsync.sync.module.RxModule
+import pl.ebo96.rxsync.sync.event.RxElapsedTimeListener
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
+import pl.ebo96.rxsync.sync.event.RxProgressListener
 import pl.ebo96.rxsync.sync.event.RxResultListener
 import pl.ebo96.rxsync.sync.method.MethodResult
 
-class RxModulesExecutor<T : Any> constructor(private val rxModules: List<RxModule<out T>>,
+class RxModulesExecutor<T : Any> constructor(private val rxNonDeferredModules: Flowable<MethodResult<out T>>,
+                                             private val rxDeferredModules: Flowable<MethodResult<out T>>,
+                                             private val rxProgressListener: RxProgressListener?,
                                              private val rxResultListener: RxResultListener<T>?,
-                                             private val rxMethodEventHandler: RxMethodEventHandler?,
                                              private val rxExecutorStateStore: RxExecutorStateStore) {
 
-    fun execute(errorHandler: Consumer<Throwable>): Disposable {
-        val modulesMethodsAsObservable = rxModules.map {
-            it.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
-        }
+    fun execute(errorHandler: Consumer<Throwable>, chronometer: Observable<Long>?, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
 
-        return Observable.concat(modulesMethodsAsObservable)
+        val elapsedTime: Disposable? = chronometer
+                ?.doOnNext { seconds ->
+                    rxElapsedTimeListener?.elapsed(seconds)
+                }
+                ?.subscribe()
+
+        val modules: Disposable = Flowable.concat(rxNonDeferredModules, rxDeferredModules)
                 .listenForResults()
-                .subscribeOn(RxExecutor.SCHEDULER)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
+                .doOnTerminate {
+                    elapsedTime?.dispose()
+                }
+                .doOnComplete {
+                    rxProgressListener?.completed()
+                }
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResultOnUi(rxResultListener), errorHandler)
+
+        return CompositeDisposable(modules).also {
+            if (elapsedTime != null) {
+                it.add(elapsedTime)
+            }
+        }
     }
 
-    private fun Observable<MethodResult<out T>>.listenForResults(): Observable<MethodResult<out T>> = this.compose {
+    private fun Flowable<MethodResult<out T>>.listenForResults(): Flowable<MethodResult<out T>> = this.compose {
         it.flatMap { methodResult ->
-            rxResultListener?.onResult(methodResult.result)
-            Observable.just(methodResult)
+            rxResultListener?.onNextResult(methodResult)
+            Flowable.just(methodResult)
         }
+    }
+
+    companion object {
+        private const val NON_DEFERRED_MODULES = false
+        private const val DEFERRED_MODULES = true
     }
 }

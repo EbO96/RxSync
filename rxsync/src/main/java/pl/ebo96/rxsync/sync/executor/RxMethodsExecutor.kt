@@ -1,46 +1,86 @@
 package pl.ebo96.rxsync.sync.executor
 
-import io.reactivex.Observable
+import android.annotation.SuppressLint
+import io.reactivex.Flowable
 import io.reactivex.functions.Function
-import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
+import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
+import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
+import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 
-class RxMethodsExecutor<T : Any> constructor(private val methods: ArrayList<RxMethod<out T>>) {
+/**
+ * Execute module methods. Methods are grouped at two group.
+ * First group represents methods which will executed synchronously, one by one.
+ * Second group contains asynchronous methods which will executed asynchronously.
+ *
+ * @param methods synchronous and asynchronous methods
+ */
+class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>,
+                                 private val asyncMethodsRetryAttempts: Long,
+                                 private val asyncMethodsAttemptsDelay: Long) {
 
-    fun prepare(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out MethodResult<out T>> {
+    @SuppressLint("CheckResult")
+    fun prepare(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore, maxThreads: Int): Flowable<out MethodResult<out T>> {
+
+        //Group methods
         val methodsGroups: Map<Boolean, List<RxMethod<out T>>> = methods.groupBy { it.async }
 
-        val syncMethods: List<Observable<out MethodResult<out T>>> = methodsGroups[NON_ASYNC]
-                ?.map { it.getOperation(rxMethodEventHandler, rxExecutorStateStore) }
+        //Create schedulers for asynchronous methods
+        val scheduler = RxScheduler.create(maxThreads)
+
+        //Prepare synchronous methods
+        val syncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[NON_ASYNC]
+                ?.map { rxMethod ->
+                    rxMethod.getOperation(rxMethodEventHandler, rxExecutorStateStore).subscribeOn(scheduler)
+                }
                 ?: emptyList()
 
-        val asyncMethods: List<Observable<out MethodResult<out T>>> = methodsGroups[ASYNC]
-                ?.map { it.getOperation(rxMethodEventHandler, rxExecutorStateStore) }
+        //Prepare asynchronous methods and subscribe every method on previously created scheduler.
+        //Scheduler can limit number of threads used
+        val asyncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[ASYNC]
+                ?.map { rxMethod ->
+                    rxMethod.getOperation(rxMethodEventHandler, rxExecutorStateStore)
+                            .subscribeOn(scheduler)
+                }
                 ?: emptyList()
 
         //Prepare async methods before execution
-        val mergedAsyncMethods = Observable.mergeDelayError(asyncMethods)
-                .retryWhen { RxMethod.getMethodRetryStrategy<T>(rxMethodEventHandler, it) }
-                .onErrorResumeNext(Function {
-                    if (it is RxMethod.Abort) {
-                        Observable.error(it)
+        val asynchronousOperations = Flowable.mergeDelayError(asyncMethods)
+                .parallel(maxThreads)
+                .runOn(Schedulers.computation())
+                .sequential(maxThreads)
+                .retryWhen { error: Flowable<Throwable> ->
+                    RxRetryStrategy<T>(
+                            rxMethodEventHandler,
+                            asyncMethodsRetryAttempts,
+                            asyncMethodsAttemptsDelay
+                    ).create(error)
+                }
+                .onErrorResumeNext(Function { error ->
+                    if (error is RxMethod.Abort) {
+                        Flowable.error(error)
                     } else {
-                        Observable.empty()
+                        Flowable.empty()
                     }
                 })
 
-        //Prepare sync methods
-        val mergedSyncMethods = Observable.concat(syncMethods).subscribeOn(RxExecutor.SCHEDULER)
-
-        return Observable.concat(mergedSyncMethods, mergedAsyncMethods)
-
+        //Execute synchronous and next asynchronous methods. Wait for all methods and go to next module
+        return Flowable
+                .concat(
+                        //First execute all synchronous methods one by one
+                        Flowable.concat(syncMethods),
+                        //Next, execute all asynchronous methods
+                        asynchronousOperations
+                )
     }
 
     fun methodsCount(): Int = methods.size
 
-    class RetryEvent
+    fun removeMethods() {
+        methods.clear()
+    }
 
     companion object {
         private const val ASYNC = true

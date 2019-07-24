@@ -1,17 +1,27 @@
 package pl.ebo96.rxsync.sync.module
 
-import io.reactivex.Observable
+import io.reactivex.Flowable
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.executor.RxMethodsExecutor
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
+import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 
-class RxModule<T : Any> private constructor(private val id: Int, private val rxMethodsExecutor: RxMethodsExecutor<out T>) : ModuleInfo,
-        Comparable<RxModule<T>> {
+/**
+ * Modules is object which contains method to execute in defined order if methods are synchronous.
+ * For asynchronous methods order isn't guarantee
+ *
+ * Module can be marked as 'deferred' which means that such module will be executed after not deferred ones
+ */
+class RxModule<T : Any> private constructor(private val id: Int,
+                                            private val rxMethodsExecutor: RxMethodsExecutor<out T>,
+                                            private val maxThreads: Int,
+                                            private val deferred: Boolean)
+    : ModuleInfo, Comparable<RxModule<T>> {
 
-    fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Observable<out MethodResult<out T>> {
-        return rxMethodsExecutor.prepare(rxMethodEventHandler, rxExecutorStateStore)
+    fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
+        return rxMethodsExecutor.prepare(rxMethodEventHandler, rxExecutorStateStore, maxThreads)
     }
 
     override fun getModuleId(): Int {
@@ -20,6 +30,14 @@ class RxModule<T : Any> private constructor(private val id: Int, private val rxM
 
     override fun getMethodsCount(): Int {
         return rxMethodsExecutor.methodsCount()
+    }
+
+    override fun removeModuleMethods() {
+        rxMethodsExecutor.removeMethods()
+    }
+
+    override fun isDeferred(): Boolean {
+        return deferred
     }
 
     override fun equals(other: Any?): Boolean {
@@ -39,17 +57,36 @@ class RxModule<T : Any> private constructor(private val id: Int, private val rxM
         }
     }
 
-    class Builder<T : Any>(private val id: Int) {
+    class Builder<T : Any>(private val id: Int, private var maxThreads: Int, private var deferred: Boolean) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
+        private var asyncMethodsRetryAttempts = RxRetryStrategy.DEFAULT_RETRY_ATTEMPTS
+        private var asyncMethodsAttemptsDelay = RxRetryStrategy.DEFAULT_ATTEMPTS_DELAY_IN_MILLIS
 
         fun register(rxMethod: RxMethod<out T>): Builder<T> {
             rxMethods.add(rxMethod)
             return this
         }
 
+        fun setThreadsLimit(limit: Int): Builder<T> {
+            if (limit > 0) {
+                maxThreads = limit
+            }
+            return this
+        }
+
+        fun asyncMethodsRetryAttempts(attempts: Long): Builder<T> {
+            asyncMethodsRetryAttempts = attempts
+            return this
+        }
+
+        fun asyncMethodsAttemptsDelay(delay: Long): Builder<T> {
+            asyncMethodsAttemptsDelay = delay
+            return this
+        }
+
         fun build(): RxModule<T> {
-            return RxModule(id, RxMethodsExecutor(rxMethods))
+            return RxModule(id, RxMethodsExecutor(rxMethods, asyncMethodsRetryAttempts, asyncMethodsAttemptsDelay), maxThreads, deferred)
         }
     }
 }

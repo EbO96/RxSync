@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.executor.RxExecutor
+import pl.ebo96.rxsync.sync.method.MethodResult
 
 class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
@@ -16,14 +17,15 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
         setContentView(R.layout.activity_main)
 
         rxExecutor = RxExecutor.Builder<Any>()
-                .register(ExampleModule2())
                 .register(ExampleModule())
+                .register(ExampleModule2())
                 .setResultListener(object : RxResultListener<Any> {
-                    override fun onResult(data: Any?) {
-                        Log.d(RxExecutor.TAG, "on result -> $data, thread -> ${Thread.currentThread().name}")
+                    override fun onNextResult(data: MethodResult<out Any>) {
+                        RestApi.results.add("${data.result}")
+                        Log.i(RxExecutor.TAG, "Result $data, on thread ${Thread.currentThread().name}")
                     }
 
-                    override fun onUiResult(data: Any?) {
+                    override fun onNextUiResult(data: MethodResult<out Any>) {
                         setResultOnTextView("$data")
                     }
                 })
@@ -33,6 +35,16 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                         progressBar.progress = rxProgress.done
                         progressPercentTextView.text = "${rxProgress.percentage}%"
                         setResultOnTextView("$rxProgress")
+                    }
+
+                    override fun completed() {
+                        RestApi.results.clear()
+                        setResultOnTextView("Completed")
+                    }
+                })
+                .setElapsedTimeListener(object : RxElapsedTimeListener {
+                    override fun elapsed(seconds: Long) {
+                        elapsedTimeTextView.text = "$seconds [s]"
                     }
                 })
                 .setErrorListener(object : RxErrorListener {
@@ -79,6 +91,5 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
     private fun setResultOnTextView(text: String) {
         resultTextView.text = "${resultTextView.text}\n$text\n----------------------------"
-        Log.d(RxExecutor.TAG, text)
     }
 }
