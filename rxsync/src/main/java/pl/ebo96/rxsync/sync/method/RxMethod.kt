@@ -34,6 +34,11 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         return this
     }
 
+    fun registerOperationDeferred(getOperation: () -> Flowable<T>): RxMethod<T> {
+        registerOperation(getOperation())
+        return this
+    }
+
     fun withPayload(payload: Any?): RxMethod<T> {
         this.payload = payload
         return this
