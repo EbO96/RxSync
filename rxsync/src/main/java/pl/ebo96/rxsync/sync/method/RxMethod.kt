@@ -35,7 +35,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     fun registerOperationDeferred(getOperation: () -> Flowable<T>): RxMethod<T> {
-        registerOperation(getOperation())
+        registerOperation(Flowable.fromCallable { getOperation() }.flatMap { it })
         return this
     }
 
