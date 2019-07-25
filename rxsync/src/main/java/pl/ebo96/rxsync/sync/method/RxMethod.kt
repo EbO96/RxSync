@@ -23,6 +23,12 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         return operation
     }
 
+    fun conditionalRegister(getPredicate: () -> RxPredicate<T>): RxMethod<T> {
+        val operation = Flowable.fromCallable { getPredicate().getValue() }.flatMap { it }
+        registerOperation(operation)
+        return this
+    }
+
     fun registerOperation(operation: Flowable<T>): RxMethod<T> {
         this.operation = prepareOperation(operation).mapToMethodResult()
         return this

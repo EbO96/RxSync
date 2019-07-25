@@ -27,7 +27,7 @@ abstract class ModuleBuilder<T : Any> {
 
     /**
      * Deferred modules can contain dynamic number of methods.
-     * For example you can register methods in 'forEach' loop based on data from previously executed methods
+     * For example you can shouldRegister methods in 'forEach' loop based on data from previously executed methods
      */
     open fun isDeferred(): Boolean {
         return false
