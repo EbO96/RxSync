@@ -15,7 +15,12 @@ class ExampleModule : ModuleFactory<Any>() {
                 .register(RxMethod.create<Int>(true).conditionalRegister {
                     RxPredicate(Flowable.just(1), false)
                 })
-                .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(2) })
+                .register(RxMethod.create<Int>(true).registerOperationDeferred {
+                    Flowable.fromCallable {
+                        Thread.sleep(3000)
+                        2
+                    }
+                })
                 .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(3) })
                 .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(4) })
                 .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(5) })

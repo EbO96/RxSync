@@ -50,8 +50,7 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                 })
                 .setErrorListener(object : RxErrorListener {
                     override fun onError(error: Throwable) {
-                        error.printStackTrace()
-                        setResultOnTextView("${error.message}")
+                        setResultOnTextView("$error on thread -> ${Thread.currentThread().name}")
                     }
                 })
                 .setEventHandler(this)
@@ -69,7 +68,7 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
     }
 
     override fun onNewRxEvent(error: Throwable, rxMethodEvent: RxMethodEventConsumer) {
-        setResultOnTextView(error.message ?: "Error")
+        setResultOnTextView("EVENT -> $error on thread -> ${Thread.currentThread().name}")
         retryButton.setOnClickListener {
             rxMethodEvent.onResponse(RxMethodEvent.RETRY)
         }

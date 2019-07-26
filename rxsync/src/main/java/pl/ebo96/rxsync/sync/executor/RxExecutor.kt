@@ -26,7 +26,8 @@ class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
         private val rxErrorListener: RxErrorListener,
         private val rxElapsedTimeListener: RxElapsedTimeListener?,
-        private val chronometer: Observable<Long>?) {
+        private val chronometer: Observable<Long>?,
+        private val timeout: Long) {
 
     private var compositeDisposable = CompositeDisposable()
     private val onUiThreadErrorHandler: Consumer<Throwable> = getErrorHandlerOnUiThread()
@@ -41,7 +42,7 @@ class RxExecutor<T : Any> private constructor(
      */
     fun start() {
         cancel()
-        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, chronometer, rxElapsedTimeListener))
+        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, chronometer, timeout, rxElapsedTimeListener))
     }
 
     /**
@@ -72,6 +73,7 @@ class RxExecutor<T : Any> private constructor(
         private var rxMethodEventHandler: RxMethodEventHandler? = null
         private var maxThreads = RxDevice.defaultThreadsLimit
         private var chronometer: Observable<Long>? = null
+        private var timeout: Long = 0
 
         fun register(rxModule: ModuleFactory<out T>): Builder<T> {
             rxModulesBuilders.add(rxModule)
@@ -82,6 +84,11 @@ class RxExecutor<T : Any> private constructor(
             rxModule.forEach {
                 rxModulesBuilders.add(it)
             }
+            return this
+        }
+
+        fun timeout(timeout: Long): Builder<T> {
+            this.timeout = timeout
             return this
         }
 
@@ -171,7 +178,7 @@ class RxExecutor<T : Any> private constructor(
                     .subscribeOn(Schedulers.computation())
 
             val modulesExecutor = RxModulesExecutor(rxNonDeferredModules, rxDeferredModules, rxProgressListener, rxResultListener, rxExecutorStateStore)
-            return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, chronometer)
+            return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, chronometer, timeout)
         }
     }
 
