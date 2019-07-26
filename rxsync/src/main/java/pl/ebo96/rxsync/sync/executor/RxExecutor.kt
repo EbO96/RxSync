@@ -78,6 +78,13 @@ class RxExecutor<T : Any> private constructor(
             return this
         }
 
+        fun register(vararg rxModule: ModuleBuilder<out T>): Builder<T> {
+            rxModule.forEach {
+                rxModulesBuilders.add(it)
+            }
+            return this
+        }
+
         fun setErrorListener(rxErrorListener: RxErrorListener): Builder<T> {
             this.rxErrorListener = rxErrorListener
             return this
