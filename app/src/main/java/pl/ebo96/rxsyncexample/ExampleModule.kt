@@ -1,12 +1,12 @@
 package pl.ebo96.rxsyncexample
 
 import io.reactivex.Flowable
-import pl.ebo96.rxsync.sync.builder.ModuleBuilder
+import pl.ebo96.rxsync.sync.builder.ModuleFactory
 import pl.ebo96.rxsync.sync.method.RxMethod
 import pl.ebo96.rxsync.sync.method.RxPredicate
 import pl.ebo96.rxsync.sync.module.RxModule
 
-class ExampleModule : ModuleBuilder<Any>() {
+class ExampleModule : ModuleFactory<Any>() {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<Any> {
         return builder

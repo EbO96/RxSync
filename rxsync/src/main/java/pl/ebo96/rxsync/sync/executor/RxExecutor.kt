@@ -9,7 +9,7 @@ import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
 import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsync.sync.RxDevice
-import pl.ebo96.rxsync.sync.builder.ModuleBuilder
+import pl.ebo96.rxsync.sync.builder.ModuleFactory
 import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.method.MethodResult
 import java.util.concurrent.TimeUnit
@@ -64,7 +64,7 @@ class RxExecutor<T : Any> private constructor(
 
     class Builder<T : Any> {
 
-        private val rxModulesBuilders = ArrayList<ModuleBuilder<out T>>()
+        private val rxModulesBuilders = ArrayList<ModuleFactory<out T>>()
         private lateinit var rxErrorListener: RxErrorListener
         private var rxProgressListener: RxProgressListener? = null
         private var rxElapsedTimeListener: RxElapsedTimeListener? = null
@@ -73,12 +73,12 @@ class RxExecutor<T : Any> private constructor(
         private var maxThreads = RxDevice.defaultThreadsLimit
         private var chronometer: Observable<Long>? = null
 
-        fun register(rxModule: ModuleBuilder<out T>): Builder<T> {
+        fun register(rxModule: ModuleFactory<out T>): Builder<T> {
             rxModulesBuilders.add(rxModule)
             return this
         }
 
-        fun register(vararg rxModule: ModuleBuilder<out T>): Builder<T> {
+        fun register(vararg rxModule: ModuleFactory<out T>): Builder<T> {
             rxModule.forEach {
                 rxModulesBuilders.add(it)
             }
@@ -131,8 +131,8 @@ class RxExecutor<T : Any> private constructor(
             val rxExecutorInfo = RxExecutorInfo()
             val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
 
-            val deferredModulesBuilders = ArrayList<ModuleBuilder<out T>>()
-            val nonDeferredModulesBuilders = ArrayList<ModuleBuilder<out T>>()
+            val deferredModulesBuilders = ArrayList<ModuleFactory<out T>>()
+            val nonDeferredModulesBuilders = ArrayList<ModuleFactory<out T>>()
 
             rxModulesBuilders.forEach { moduleBuilder ->
                 if (moduleBuilder.isDeferred()) {

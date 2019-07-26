@@ -1,6 +1,7 @@
 package pl.ebo96.rxsync.sync.module
 
 import io.reactivex.Flowable
+import pl.ebo96.rxsync.sync.builder.ModuleFactory
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.executor.RxMethodsExecutor
@@ -17,7 +18,8 @@ import pl.ebo96.rxsync.sync.method.RxRetryStrategy
 class RxModule<T : Any> private constructor(private val id: Int,
                                             private val rxMethodsExecutor: RxMethodsExecutor<out T>,
                                             private val maxThreads: Int,
-                                            private val deferred: Boolean)
+                                            private val deferred: Boolean,
+                                            private val moduleFactory: ModuleFactory<T>)
     : ModuleInfo, Comparable<RxModule<T>> {
 
     fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
@@ -40,6 +42,10 @@ class RxModule<T : Any> private constructor(private val id: Int,
         return deferred
     }
 
+    fun getFactory(): ModuleFactory<out T> {
+        return moduleFactory
+    }
+
     override fun equals(other: Any?): Boolean {
         val module = other as? RxModule<*> ?: return false
         return module.getModuleId() == getModuleId()
@@ -57,7 +63,7 @@ class RxModule<T : Any> private constructor(private val id: Int,
         }
     }
 
-    class Builder<T : Any>(private val id: Int, private var maxThreads: Int, private var deferred: Boolean) {
+    class Builder<T : Any>(private val id: Int, private var maxThreads: Int, private var deferred: Boolean, private val moduleFactory: ModuleFactory<T>) {
 
         private val rxMethods = ArrayList<RxMethod<out T>>()
         private var asyncMethodsRetryAttempts = RxRetryStrategy.DEFAULT_RETRY_ATTEMPTS
@@ -86,7 +92,7 @@ class RxModule<T : Any> private constructor(private val id: Int,
         }
 
         fun build(): RxModule<T> {
-            return RxModule(id, RxMethodsExecutor(rxMethods, asyncMethodsRetryAttempts, asyncMethodsAttemptsDelay), maxThreads, deferred)
+            return RxModule(id, RxMethodsExecutor(rxMethods, asyncMethodsRetryAttempts, asyncMethodsAttemptsDelay), maxThreads, deferred, moduleFactory)
         }
     }
 }
