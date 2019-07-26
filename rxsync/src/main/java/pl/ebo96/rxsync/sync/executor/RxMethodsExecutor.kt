@@ -9,6 +9,7 @@ import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
 import pl.ebo96.rxsync.sync.method.MethodResult
 import pl.ebo96.rxsync.sync.method.RxMethod
 import pl.ebo96.rxsync.sync.method.RxRetryStrategy
+import pl.ebo96.rxsync.sync.module.RxModule
 
 /**
  * Execute module methods. Methods are grouped at two group.
@@ -22,7 +23,7 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
                                  private val asyncMethodsAttemptsDelay: Long) {
 
     @SuppressLint("CheckResult")
-    fun prepare(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore, maxThreads: Int): Flowable<out MethodResult<out T>> {
+    fun prepare(module: RxModule<*>, rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore, maxThreads: Int): Flowable<out MethodResult<out T>> {
 
         //Group methods
         val methodsGroups: Map<Boolean, List<RxMethod<out T>>> = methods.groupBy { it.async }
@@ -33,7 +34,7 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
         //Prepare synchronous methods
         val syncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[NON_ASYNC]
                 ?.map { rxMethod ->
-                    rxMethod.getOperation(rxMethodEventHandler, rxExecutorStateStore).subscribeOn(scheduler)
+                    rxMethod.getOperation(module, rxMethodEventHandler, rxExecutorStateStore).subscribeOn(scheduler)
                 }
                 ?: emptyList()
 
@@ -41,7 +42,7 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
         //Scheduler can limit number of threads used
         val asyncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[ASYNC]
                 ?.map { rxMethod ->
-                    rxMethod.getOperation(rxMethodEventHandler, rxExecutorStateStore)
+                    rxMethod.getOperation(module, rxMethodEventHandler, rxExecutorStateStore)
                             .subscribeOn(scheduler)
                 }
                 ?: emptyList()

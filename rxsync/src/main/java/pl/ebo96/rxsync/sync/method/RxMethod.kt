@@ -5,18 +5,21 @@ import io.reactivex.Flowable
 import io.reactivex.functions.Function
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxMethodEventHandler
+import pl.ebo96.rxsync.sync.module.RxModule
 
 class RxMethod<T : Any> private constructor(val async: Boolean, private val retryAttempts: Long, private val delayInMillis: Long) : MethodInfo {
 
     private val id: Int by lazy { rxExecutorStateStore.generateMethodId() }
     private lateinit var operation: Flowable<MethodResult<out T>>
+    private lateinit var module: RxModule<*>
     private var payload: Any? = null
     private var rxMethodEventHandler: RxMethodEventHandler? = null
     private lateinit var rxExecutorStateStore: RxExecutorStateStore
     private lateinit var rxRetryStrategy: RxRetryStrategy<T>
 
 
-    fun getOperation(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<MethodResult<out T>> {
+    fun getOperation(module: RxModule<*>, rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<MethodResult<out T>> {
+        this.module = module
         this.rxMethodEventHandler = rxMethodEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
         this.rxRetryStrategy = RxRetryStrategy(rxMethodEventHandler, retryAttempts, delayInMillis)
@@ -52,7 +55,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
 
     private fun Flowable<out T>.mapToMethodResult(): Flowable<MethodResult<out T>> {
         return flatMap {
-            Flowable.just(MethodResult(this@RxMethod, it, payload))
+            Flowable.just(MethodResult(this@RxMethod, it, payload, module))
         }
     }
 

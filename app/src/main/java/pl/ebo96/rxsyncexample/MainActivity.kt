@@ -7,6 +7,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.executor.RxExecutor
 import pl.ebo96.rxsync.sync.method.MethodResult
+import pl.ebo96.rxsync.sync.module.RxModule
 
 class MainActivity : AppCompatActivity(), RxMethodEventHandler {
 
@@ -30,10 +31,10 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                     }
                 })
                 .setProgressListener(object : RxProgressListener {
-                    override fun onProgress(rxProgress: RxProgress) {
+                    override fun onProgress(module: RxModule<*>, rxProgress: RxProgress) {
                         progressBar.max = rxProgress.total
                         progressBar.progress = rxProgress.done
-                        progressPercentTextView.text = "${rxProgress.percentage}%"
+                        progressPercentTextView.text = "MODULE $module -> PROGRESS ${rxProgress.percentage}%"
                         setResultOnTextView("$rxProgress")
                     }
 

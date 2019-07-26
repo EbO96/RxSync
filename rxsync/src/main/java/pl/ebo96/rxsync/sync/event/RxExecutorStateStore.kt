@@ -41,7 +41,7 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
         )
 
         rxResultListener?.onNextUiResult(methodResult)
-        rxProgressListener?.onProgress(rxProgress)
+        rxProgressListener?.onProgress(methodResult.module, rxProgress)
     }
 
     fun reset(): Consumer<in Subscription> = Consumer {

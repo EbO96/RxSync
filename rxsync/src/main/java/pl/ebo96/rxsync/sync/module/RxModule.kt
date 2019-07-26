@@ -21,7 +21,7 @@ class RxModule<T : Any> private constructor(private val id: Int,
     : ModuleInfo, Comparable<RxModule<T>> {
 
     fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
-        return rxMethodsExecutor.prepare(rxMethodEventHandler, rxExecutorStateStore, maxThreads)
+        return rxMethodsExecutor.prepare(this@RxModule, rxMethodEventHandler, rxExecutorStateStore, maxThreads)
     }
 
     override fun getModuleId(): Int {
