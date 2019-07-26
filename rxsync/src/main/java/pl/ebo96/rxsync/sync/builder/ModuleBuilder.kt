@@ -25,6 +25,10 @@ abstract class ModuleBuilder<T : Any> {
         return javaClass.simpleName
     }
 
+    fun getModule(): RxModule<out T> {
+        return module ?: throw Exception("Module is not build yet")
+    }
+
     /**
      * Deferred modules can contain dynamic number of methods.
      * For example you can shouldRegister methods in 'forEach' loop based on data from previously executed methods
