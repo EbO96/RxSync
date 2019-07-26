@@ -34,7 +34,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxNonDeferredModules: F
                     elapsedTime?.dispose()
                 }
                 .doOnComplete {
-                    rxProgressListener?.completed()
+                    rxProgressListener?.completed(rxExecutorStateStore.getSummary())
                 }
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResultOnUi(rxResultListener), errorHandler)
 

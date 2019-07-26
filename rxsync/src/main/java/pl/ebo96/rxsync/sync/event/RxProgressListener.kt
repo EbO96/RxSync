@@ -6,6 +6,5 @@ interface RxProgressListener {
 
     fun onProgress(module: RxModule<*>, rxProgress: RxProgress)
 
-    //TODO return all and done methods count
-    fun completed()
+    fun completed(rxProgress: RxProgress)
 }

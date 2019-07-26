@@ -38,9 +38,9 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                         setResultOnTextView("$rxProgress")
                     }
 
-                    override fun completed() {
+                    override fun completed(rxProgress: RxProgress) {
                         RestApi.results.clear()
-                        setResultOnTextView("Completed")
+                        setResultOnTextView("Completed | $rxProgress")
                     }
                 })
                 .setElapsedTimeListener(object : RxElapsedTimeListener {

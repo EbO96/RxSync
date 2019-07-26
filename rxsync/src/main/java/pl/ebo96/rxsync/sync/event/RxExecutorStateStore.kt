@@ -31,14 +31,18 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
         return rxExecutorInfo.getMethodsCount()
     }
 
+    fun getSummary(): RxProgress {
+        return RxProgress(
+                done = getDoneMethodsCount(),
+                total = getAllMethodsCount()
+        )
+    }
+
     fun <T : Any> updateProgressAndExposeResultOnUi(rxResultListener: RxResultListener<T>?): Consumer<MethodResult<out T>> = Consumer { methodResult ->
         val methodId = methodResult.methodInfo.getMethodId()
         doneMethods[methodId] = methodId
 
-        val rxProgress = RxProgress(
-                done = getDoneMethodsCount(),
-                total = getAllMethodsCount()
-        )
+        val rxProgress = getSummary()
 
         rxResultListener?.onNextUiResult(methodResult)
         rxProgressListener?.onProgress(methodResult.module, rxProgress)
