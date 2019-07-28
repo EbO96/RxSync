@@ -11,6 +11,11 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
 
     private val doneMethods = ConcurrentHashMap<Int, Int>()
 
+    /**
+     * [module id] -> [done methods -> total methods]
+     */
+    private val perModuleProgress = ConcurrentHashMap<Int, ConcurrentHashMap<Int, Int>>()
+
     private val methodsIdStore: AtomicInteger = AtomicInteger()
 
     private val moduleIdStore: AtomicInteger = AtomicInteger()
@@ -42,14 +47,28 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
         val methodId = methodResult.methodInfo.getMethodId()
         doneMethods[methodId] = methodId
 
+        val moduleDoneMethods: ConcurrentHashMap<Int, Int> = perModuleProgress[methodResult.module.getModuleId()]
+                ?: ConcurrentHashMap()
+
+        moduleDoneMethods[methodId] = methodResult.module.getMethodsCount()
+        perModuleProgress[methodResult.module.getModuleId()] = moduleDoneMethods
+
         val rxProgress = getSummary()
 
         rxResultListener?.onNextUiResult(methodResult)
-        rxProgressListener?.onProgress(methodResult.module, rxProgress)
+        rxProgressListener?.onProgress(rxProgress)
+
+        val moduleProgress = RxProgress(
+                done = moduleDoneMethods.keys.size,
+                total = moduleDoneMethods.values.firstOrNull() ?: 0
+        )
+
+        rxProgressListener?.onModuleProgress(methodResult.module, moduleProgress)
     }
 
     fun reset(): Consumer<in Subscription> = Consumer {
         doneMethods.clear()
+        perModuleProgress.clear()
         rxExecutorInfo.removeMethods()
     }
 }

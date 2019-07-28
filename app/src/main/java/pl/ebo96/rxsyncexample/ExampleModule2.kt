@@ -8,7 +8,7 @@ class ExampleModule2 : ModuleFactory<Any>() {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<out Any> {
         RestApi.results.forEachIndexed { index, result ->
-            builder.register(RxMethod.create<String>(false).registerOperation { "$result + [${index + 1}]" })
+            builder.register(RxMethod.create<String>(false).mapAndRegisterOperation { "$result + [${index + 1}]" })
         }
 
         return builder

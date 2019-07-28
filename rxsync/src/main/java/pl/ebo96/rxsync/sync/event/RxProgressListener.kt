@@ -4,7 +4,8 @@ import pl.ebo96.rxsync.sync.module.RxModule
 
 interface RxProgressListener {
 
-    fun onProgress(module: RxModule<*>, rxProgress: RxProgress)
+    fun onProgress(rxProgress: RxProgress)
+    fun onModuleProgress(module: RxModule<*>, rxProgress: RxProgress)
 
     fun completed(rxProgress: RxProgress)
 }

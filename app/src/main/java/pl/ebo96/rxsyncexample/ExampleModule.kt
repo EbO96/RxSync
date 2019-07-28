@@ -17,7 +17,6 @@ class ExampleModule : ModuleFactory<Any>() {
                 })
                 .register(RxMethod.create<Int>(true).registerOperationDeferred {
                     Flowable.fromCallable {
-                        Thread.sleep(3000)
                         2
                     }
                 })

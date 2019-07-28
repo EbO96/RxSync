@@ -31,11 +31,15 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                     }
                 })
                 .setProgressListener(object : RxProgressListener {
-                    override fun onProgress(module: RxModule<*>, rxProgress: RxProgress) {
+                    override fun onProgress(rxProgress: RxProgress) {
                         progressBar.max = rxProgress.total
                         progressBar.progress = rxProgress.done
-                        progressPercentTextView.text = "MODULE $module -> PROGRESS ${rxProgress.percentage}%"
+                        progressPercentTextView.text = "${rxProgress.percentage}%"
                         setResultOnTextView("$rxProgress")
+                    }
+
+                    override fun onModuleProgress(module: RxModule<*>, rxProgress: RxProgress) {
+                        Log.i(RxExecutor.TAG, "MODULE: $module PROGRESS: $rxProgress")
                     }
 
                     override fun completed(rxProgress: RxProgress) {
