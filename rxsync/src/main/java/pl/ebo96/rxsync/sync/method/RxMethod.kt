@@ -27,13 +27,12 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     fun conditionalRegister(getPredicate: () -> RxPredicate<T>): RxMethod<T> {
-        val operation = Flowable.fromCallable { getPredicate().getValue() }.flatMap { it }
-        registerOperation(operation)
+        this.operation = Flowable.fromCallable { getPredicate() }.flatMap { mapToMethodResult(it.getValue()).prepareOperation() }
         return this
     }
 
     fun registerOperation(operation: Flowable<T>): RxMethod<T> {
-        this.operation = prepareOperation(operation).mapToMethodResult()
+        this.operation = mapToMethodResult(operation).prepareOperation()
         return this
     }
 
@@ -53,9 +52,20 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
         return this
     }
 
-    private fun Flowable<out T>.mapToMethodResult(): Flowable<MethodResult<out T>> {
-        return flatMap {
-            Flowable.just(MethodResult(this@RxMethod, it, payload, module))
+    /**
+     * Need to check if operation 'isEmpty'. If operation return empty(), then it immediately
+     * returns onComplete callback which is bad because our 'onNext' method is responsible for
+     * counting done methods and final result done method are wrong by that. We can wrap result and return 'null'.
+     */
+    private fun mapToMethodResult(operation: Flowable<out T>): Flowable<MethodResult<out T>> {
+        return operation.isEmpty.toFlowable().flatMap { isEmpty ->
+            if (isEmpty) {
+                Flowable.just(MethodResult(this@RxMethod, null, payload, module))
+            } else {
+                operation.flatMap { result ->
+                    Flowable.just(MethodResult(this@RxMethod, result, payload, module))
+                }
+            }
         }
     }
 
@@ -68,27 +78,27 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     @SuppressLint("CheckResult")
-    private fun prepareOperation(operation: Flowable<T>): Flowable<out T> {
+    private fun Flowable<MethodResult<out T>>.prepareOperation(): Flowable<MethodResult<out T>> {
         return if (async) {
-            prepareAsyncOperation(operation)
+            prepareAsyncOperation(this)
         } else {
-            prepareSyncOperation(operation)
+            prepareSyncOperation(this)
         }
     }
 
-    private fun prepareSyncOperation(operation: Flowable<T>): Flowable<T> {
+    private fun prepareSyncOperation(operation: Flowable<MethodResult<out T>>): Flowable<MethodResult<out T>> {
         return operation
                 .retryWhen { error -> rxRetryStrategy.create(error) }
                 .onErrorResumeNext(Function { error ->
                     if (error is Abort) {
                         Flowable.error(error)
                     } else {
-                        Flowable.empty<T>()
+                        Flowable.empty<MethodResult<T>>()
                     }
                 })
     }
 
-    private fun prepareAsyncOperation(operation: Flowable<T>): Flowable<T> {
+    private fun prepareAsyncOperation(operation: Flowable<MethodResult<out T>>): Flowable<MethodResult<out T>> {
         return operation
     }
 
