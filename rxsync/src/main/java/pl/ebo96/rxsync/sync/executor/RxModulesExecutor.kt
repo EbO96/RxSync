@@ -71,7 +71,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                         rxExecutorInfo.saveModuleInfo(module)
                         moduleMethods
                     }
-                    rxProgressListener?.onModulesRegistered(rxExecutorInfo.getRegisteredModules())
+                    rxProgressListener?.onModulesRegistered(rxExecutorInfo.getRegisteredModules(rxExecutorStateStore))
                     moduleMethods
                 }
                 .flatMap { modules ->

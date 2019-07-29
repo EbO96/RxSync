@@ -1,6 +1,7 @@
 package pl.ebo96.rxsync.sync.executor
 
 import pl.ebo96.rxsync.sync.event.PreparedModules
+import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
 import pl.ebo96.rxsync.sync.event.RxProgress
 import pl.ebo96.rxsync.sync.module.ModuleInfo
 import pl.ebo96.rxsync.sync.module.RxModule
@@ -19,12 +20,13 @@ class RxExecutorInfo {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getRegisteredModules(): PreparedModules {
+    fun getRegisteredModules(rxExecutorStateStore: RxExecutorStateStore): PreparedModules {
         return modulesInfo
                 .asSequence()
                 .mapNotNull { it as? RxModule<out Any> }
                 .map {
-                    it to RxProgress(0, it.getMethodsCount())
+                    val moduleProgress = rxExecutorStateStore.getModuleProgress(it.getModuleId())
+                    it to RxProgress(moduleProgress.done, it.getMethodsCount())
                 }
                 .toMap()
     }

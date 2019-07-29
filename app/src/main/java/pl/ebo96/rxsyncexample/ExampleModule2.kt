@@ -23,7 +23,7 @@ class ExampleModule2 : ModuleFactory<Any>() {
     }
 
     override fun isDeferred(): Boolean {
-        return false
+        return true
     }
 
 }

@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                     }
 
                     override fun onModulesRegistered(modules: PreparedModules) {
-
+                        modules
                     }
 
                     override fun completed(rxProgress: RxProgress) {

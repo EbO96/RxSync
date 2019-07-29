@@ -36,6 +36,14 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
         return rxExecutorInfo.getMethodsCount()
     }
 
+    fun getModuleProgress(id: Int): RxProgress {
+        val moduleProgress = perModuleProgress[id]
+        return RxProgress(
+                done = moduleProgress?.keys?.size ?: 0,
+                total = moduleProgress?.values?.firstOrNull() ?: 0
+        )
+    }
+
     fun getSummary(): RxProgress {
         return RxProgress(
                 done = getDoneMethodsCount(),
@@ -58,10 +66,7 @@ class RxExecutorStateStore(private val rxProgressListener: RxProgressListener?, 
         rxResultListener?.onNextUiResult(methodResult)
         rxProgressListener?.onProgress(rxProgress)
 
-        val moduleProgress = RxProgress(
-                done = moduleDoneMethods.keys.size,
-                total = moduleDoneMethods.values.firstOrNull() ?: 0
-        )
+        val moduleProgress = getModuleProgress(methodResult.module.getModuleId())
 
         rxProgressListener?.onModuleProgress(methodResult.module, moduleProgress)
     }
