@@ -42,6 +42,10 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                         Log.i(RxExecutor.TAG, "MODULE: $module PROGRESS: $rxProgress")
                     }
 
+                    override fun onModulesRegistered(modules: PreparedModules) {
+
+                    }
+
                     override fun completed(rxProgress: RxProgress) {
                         RestApi.results.clear()
                         setResultOnTextView("Completed | $rxProgress")

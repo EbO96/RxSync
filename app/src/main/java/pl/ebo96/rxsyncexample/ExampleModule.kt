@@ -17,6 +17,7 @@ class ExampleModule : ModuleFactory<Any>() {
                 })
                 .register(RxMethod.create<Int>(true).registerOperationDeferred {
                     Flowable.fromCallable {
+                        throw Exception("test Error")
                         2
                     }
                 })

@@ -6,20 +6,36 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.Consumer
-import pl.ebo96.rxsync.sync.event.RxElapsedTimeListener
-import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
-import pl.ebo96.rxsync.sync.event.RxProgressListener
-import pl.ebo96.rxsync.sync.event.RxResultListener
+import io.reactivex.schedulers.Schedulers
+import pl.ebo96.rxsync.sync.builder.ModuleFactory
+import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.method.MethodResult
 import java.util.concurrent.TimeUnit
 
-class RxModulesExecutor<T : Any> constructor(private val rxNonDeferredModules: Flowable<MethodResult<out T>>,
-                                             private val rxDeferredModules: Flowable<MethodResult<out T>>,
+class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: ArrayList<ModuleFactory<out T>>,
                                              private val rxProgressListener: RxProgressListener?,
                                              private val rxResultListener: RxResultListener<T>?,
-                                             private val rxExecutorStateStore: RxExecutorStateStore) {
+                                             private val rxMethodEventHandler: RxMethodEventHandler?,
+                                             private val maxThreads: Int) {
 
     fun execute(errorHandler: Consumer<Throwable>, chronometer: Observable<Long>?, timeout: Long, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
+
+        val rxExecutorInfo = RxExecutorInfo()
+        val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
+
+        val deferredModulesBuilders = ArrayList<ModuleFactory<out T>>()
+        val nonDeferredModulesBuilders = ArrayList<ModuleFactory<out T>>()
+
+        rxModulesBuilders.forEach { moduleBuilder ->
+            if (moduleBuilder.isDeferred()) {
+                deferredModulesBuilders.add(moduleBuilder)
+            } else {
+                nonDeferredModulesBuilders.add(moduleBuilder)
+            }
+        }
+
+        val rxNonDeferredModules: Flowable<MethodResult<out T>> = nonDeferredModulesBuilders.prepareModuleMethods(rxExecutorStateStore, rxExecutorInfo)
+        val rxDeferredModules: Flowable<MethodResult<out T>> = deferredModulesBuilders.prepareModuleMethods(rxExecutorStateStore, rxExecutorInfo)
 
         val elapsedTime: Disposable? = chronometer
                 ?.doOnNext { seconds ->
@@ -43,6 +59,25 @@ class RxModulesExecutor<T : Any> constructor(private val rxNonDeferredModules: F
                 it.add(elapsedTime)
             }
         }
+    }
+
+    private fun ArrayList<ModuleFactory<out T>>.prepareModuleMethods(rxExecutorStateStore: RxExecutorStateStore,
+                                                                     rxExecutorInfo: RxExecutorInfo): Flowable<MethodResult<out T>> {
+        return Flowable
+                .fromCallable {
+                    val moduleMethods = this@prepareModuleMethods.map { builder ->
+                        val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
+                        val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
+                        rxExecutorInfo.saveModuleInfo(module)
+                        moduleMethods
+                    }
+                    rxProgressListener?.onModulesRegistered(rxExecutorInfo.getRegisteredModules())
+                    moduleMethods
+                }
+                .flatMap { modules ->
+                    Flowable.concat(modules)
+                }
+                .subscribeOn(Schedulers.computation())
     }
 
     private fun Flowable<MethodResult<out T>>.applyTimeout(timeout: Long): Flowable<MethodResult<out T>> = this.compose {

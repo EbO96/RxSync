@@ -1,6 +1,6 @@
 package pl.ebo96.rxsync.sync.module
 
-interface ModuleInfo {
+interface ModuleInfo<T : Any> {
 
     fun isDeferred(): Boolean
 

@@ -1,17 +1,14 @@
 package pl.ebo96.rxsync.sync.executor
 
 import io.reactivex.Completable
-import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
-import io.reactivex.schedulers.Schedulers
 import pl.ebo96.rxsync.sync.RxDevice
 import pl.ebo96.rxsync.sync.builder.ModuleFactory
 import pl.ebo96.rxsync.sync.event.*
-import pl.ebo96.rxsync.sync.method.MethodResult
 import java.util.concurrent.TimeUnit
 
 /**
@@ -135,49 +132,7 @@ class RxExecutor<T : Any> private constructor(
         }
 
         fun build(): RxExecutor<T> {
-            val rxExecutorInfo = RxExecutorInfo()
-            val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
-
-            val deferredModulesBuilders = ArrayList<ModuleFactory<out T>>()
-            val nonDeferredModulesBuilders = ArrayList<ModuleFactory<out T>>()
-
-            rxModulesBuilders.forEach { moduleBuilder ->
-                if (moduleBuilder.isDeferred()) {
-                    deferredModulesBuilders.add(moduleBuilder)
-                } else {
-                    nonDeferredModulesBuilders.add(moduleBuilder)
-                }
-            }
-
-            val rxNonDeferredModules: Flowable<MethodResult<out T>> = Flowable
-                    .fromCallable {
-                        nonDeferredModulesBuilders.map { builder ->
-                            val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
-                            val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
-                            rxExecutorInfo.saveModuleInfo(module)
-                            moduleMethods
-                        }
-                    }
-                    .flatMap { modules ->
-                        Flowable.concat(modules)
-                    }
-                    .subscribeOn(Schedulers.computation())
-
-            val rxDeferredModules: Flowable<MethodResult<out T>> = Flowable
-                    .fromCallable {
-                        deferredModulesBuilders.map { builder ->
-                            val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
-                            val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
-                            rxExecutorInfo.saveModuleInfo(module)
-                            moduleMethods
-                        }
-                    }
-                    .flatMap { modules ->
-                        Flowable.concat(modules)
-                    }
-                    .subscribeOn(Schedulers.computation())
-
-            val modulesExecutor = RxModulesExecutor(rxNonDeferredModules, rxDeferredModules, rxProgressListener, rxResultListener, rxExecutorStateStore)
+            val modulesExecutor = RxModulesExecutor(rxModulesBuilders, rxProgressListener, rxResultListener, rxMethodEventHandler, maxThreads)
             return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, chronometer, timeout)
         }
     }

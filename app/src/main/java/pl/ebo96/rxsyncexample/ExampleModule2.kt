@@ -1,5 +1,6 @@
 package pl.ebo96.rxsyncexample
 
+import io.reactivex.Flowable
 import pl.ebo96.rxsync.sync.builder.ModuleFactory
 import pl.ebo96.rxsync.sync.method.RxMethod
 import pl.ebo96.rxsync.sync.module.RxModule
@@ -7,12 +8,14 @@ import pl.ebo96.rxsync.sync.module.RxModule
 class ExampleModule2 : ModuleFactory<Any>() {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<out Any> {
-        RestApi.results.forEachIndexed { index, result ->
-            builder.register(RxMethod.create<String>(false).registerOperation { "$result + [${index + 1}]" })
-        }
-
         return builder
+                .asyncMethodsAttemptsDelay(500)
+                .asyncMethodsRetryAttempts(2)
+                .register(RxMethod.create<String>(true).registerOperationDeferred { Flowable.just("Hello") })
+                .register(RxMethod.create<String>(true).registerOperationDeferred { Flowable.just("World") })
+                .register(RxMethod.create<String>(true).registerOperationDeferred { Flowable.just("!") })
                 .build()
+
     }
 
     override fun tag(): Any {
@@ -20,7 +23,7 @@ class ExampleModule2 : ModuleFactory<Any>() {
     }
 
     override fun isDeferred(): Boolean {
-        return true
+        return false
     }
 
 }

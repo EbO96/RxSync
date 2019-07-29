@@ -8,8 +8,6 @@ abstract class ModuleFactory<T : Any> {
     private var module: RxModule<out T>? = null
 
     fun createModuleAndGet(id: Int, maxThreads: Int): RxModule<out T> = module
-            //Get previously created module only if module isn't deferred module.
-            .takeIf { !isDeferred() }
             ?: this.build(RxModule.Builder(id, maxThreads, isDeferred(), this)).also { module = it }
 
     /**
