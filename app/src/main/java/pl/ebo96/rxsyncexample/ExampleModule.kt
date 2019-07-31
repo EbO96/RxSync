@@ -12,18 +12,9 @@ class ExampleModule : ModuleFactory<Any>() {
         return builder
                 .asyncMethodsAttemptsDelay(500)
                 .asyncMethodsRetryAttempts(2)
-                .register(RxMethod.create<Int>(true).conditionalRegister {
-                    RxPredicate(Flowable.just(1), false)
-                })
-                .register(RxMethod.create<Int>(true).registerOperationDeferred {
-                    Flowable.fromCallable {
-                        throw Exception("test Error")
-                        2
-                    }
-                })
-                .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(3) })
-                .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(4) })
-                .register(RxMethod.create<Int>(true).registerOperationDeferred { Flowable.just(5) })
+                .register(RxMethod.create<Int>(false).registerOperation(Flowable.just(1)))
+                .register(RxMethod.create<Int>(false).registerOperation(Flowable.just(2)))
+                .register(RxMethod.create<Int>(false).registerOperation(Flowable.just(3)))
                 .build()
     }
 

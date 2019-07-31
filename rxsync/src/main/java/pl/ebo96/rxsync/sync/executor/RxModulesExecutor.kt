@@ -1,5 +1,6 @@
 package pl.ebo96.rxsync.sync.executor
 
+import android.util.Log
 import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -19,6 +20,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                                              private val maxThreads: Int) {
 
     fun execute(errorHandler: Consumer<Throwable>, chronometer: Observable<Long>?, timeout: Long, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
+        Log.d(RxExecutor.TAG, "Execute $rxModulesBuilders")
 
         val rxExecutorInfo = RxExecutorInfo()
         val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
@@ -74,8 +76,8 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                     rxProgressListener?.onModulesRegistered(rxExecutorInfo.getRegisteredModules(rxExecutorStateStore))
                     moduleMethods
                 }
-                .flatMap { modules ->
-                    Flowable.concat(modules)
+                .flatMap { moduleMethods ->
+                    Flowable.concat(moduleMethods)
                 }
                 .subscribeOn(Schedulers.computation())
     }

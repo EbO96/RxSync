@@ -11,9 +11,9 @@ class ExampleModule2 : ModuleFactory<Any>() {
         return builder
                 .asyncMethodsAttemptsDelay(500)
                 .asyncMethodsRetryAttempts(2)
-                .register(RxMethod.create<String>(true).registerOperationDeferred { Flowable.just("Hello") })
-                .register(RxMethod.create<String>(true).registerOperationDeferred { Flowable.just("World") })
-                .register(RxMethod.create<String>(true).registerOperationDeferred { Flowable.just("!") })
+                .register(RxMethod.create<String>(false).registerOperation(Flowable.just("Hello")))
+                .register(RxMethod.create<String>(false).registerOperation(Flowable.just("World")))
+                .register(RxMethod.create<String>(false).registerOperation(Flowable.just("!")))
                 .build()
 
     }

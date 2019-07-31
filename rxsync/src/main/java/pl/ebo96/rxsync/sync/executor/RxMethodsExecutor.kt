@@ -42,8 +42,7 @@ class RxMethodsExecutor<T : Any>(private val methods: ArrayList<RxMethod<out T>>
         //Scheduler can limit number of threads used
         val asyncMethods: List<Flowable<out MethodResult<out T>>> = methodsGroups[ASYNC]
                 ?.map { rxMethod ->
-                    rxMethod.getOperation(module, rxMethodEventHandler, rxExecutorStateStore)
-                            .subscribeOn(scheduler)
+                    rxMethod.getOperation(module, rxMethodEventHandler, rxExecutorStateStore).subscribeOn(scheduler)
                 }
                 ?: emptyList()
 

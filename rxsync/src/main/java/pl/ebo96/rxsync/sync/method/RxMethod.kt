@@ -1,6 +1,5 @@
 package pl.ebo96.rxsync.sync.method
 
-import android.annotation.SuppressLint
 import io.reactivex.Flowable
 import io.reactivex.functions.Function
 import pl.ebo96.rxsync.sync.event.RxExecutorStateStore
@@ -18,7 +17,7 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     private lateinit var rxRetryStrategy: RxRetryStrategy<T>
 
 
-    fun getOperation(module: RxModule<*>, rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<MethodResult<out T>> {
+    internal fun getOperation(module: RxModule<*>, rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<MethodResult<out T>> {
         this.module = module
         this.rxMethodEventHandler = rxMethodEventHandler
         this.rxExecutorStateStore = rxExecutorStateStore
@@ -27,12 +26,16 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     }
 
     fun conditionalRegister(getPredicate: () -> RxPredicate<T>): RxMethod<T> {
-        this.operation = Flowable.fromCallable { getPredicate() }.flatMap { mapToMethodResult(it.getValue()).prepareOperation() }
+        this.operation = Flowable.fromCallable { getPredicate() }.flatMap {
+            val operation = mapToMethodResult(it.getValue())
+            prepareOperation(operation)
+        }
         return this
     }
 
     fun registerOperation(operation: Flowable<T>): RxMethod<T> {
-        this.operation = mapToMethodResult(operation).prepareOperation()
+        this.operation = mapToMethodResult(operation)
+        this.operation = prepareOperation(this.operation)
         return this
     }
 
@@ -58,31 +61,34 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
      * counting done methods and final result done method are wrong by that. We can wrap result and return 'null'.
      */
     private fun mapToMethodResult(operation: Flowable<out T>): Flowable<MethodResult<out T>> {
-        return operation.isEmpty.toFlowable().flatMap { isEmpty ->
-            if (isEmpty) {
-                Flowable.just(MethodResult(this@RxMethod, null, payload, module))
-            } else {
-                operation.flatMap { result ->
-                    Flowable.just(MethodResult(this@RxMethod, result, payload, module))
-                }
-            }
+        return operation.map { result ->
+            MethodResult(this@RxMethod, result, payload, module)
         }
+//        return operation.isEmpty.toFlowable().flatMap { isEmpty ->
+//            if (isEmpty) {
+//                Flowable.just(MethodResult(this@RxMethod, null, payload, module))
+//            } else {
+//                operation.map { result ->
+//                    Log.d(RxExecutor.TAG, "Result: $result")
+//                    MethodResult(this@RxMethod, result, payload, module)
+//                }
+//            }
+//        }
     }
 
     fun doSomethingWithResult(result: (T?) -> Unit): RxMethod<T> {
-        this.operation = this.operation.flatMap {
+        this.operation = this.operation.map {
             result(it.result)
-            Flowable.just(it)
+            it
         }
         return this
     }
 
-    @SuppressLint("CheckResult")
-    private fun Flowable<MethodResult<out T>>.prepareOperation(): Flowable<MethodResult<out T>> {
+    private fun prepareOperation(operation: Flowable<MethodResult<out T>>): Flowable<MethodResult<out T>> {
         return if (async) {
-            prepareAsyncOperation(this)
+            prepareAsyncOperation(operation)
         } else {
-            prepareSyncOperation(this)
+            prepareSyncOperation(operation)
         }
     }
 
