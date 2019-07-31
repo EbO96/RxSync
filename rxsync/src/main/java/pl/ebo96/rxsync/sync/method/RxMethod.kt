@@ -54,19 +54,20 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
      */
     private fun mapToMethodResult(operation: Flowable<out T>): Flowable<MethodResult<out T>> {
         return Flowable
-                .unsafeCreate<Flowable<out MethodResult<out T>>> { subscriber ->
+                .fromCallable {
                     val operationIsEmpty = operation.isEmpty.onErrorReturn { false }.blockingGet()
-                    val result = if (operationIsEmpty) {
+                    if (operationIsEmpty) {
                         Flowable.just(MethodResult(this@RxMethod, null, payload, module))
                     } else {
-                        operation.map { methodResult ->
-                            MethodResult(this@RxMethod, methodResult, payload, module)
+                        operation.flatMap { methodResult ->
+                            Flowable.just(MethodResult(this@RxMethod, methodResult, payload, module))
                         }
                     }
-                    subscriber.onNext(result)
-                    subscriber.onComplete()
                 }
-                .flatMap { it }
+                .flatMap {
+                    it
+                }
+
 //        return operation.map { result ->
 //            MethodResult(this@RxMethod, result, payload, module)
 //        }
