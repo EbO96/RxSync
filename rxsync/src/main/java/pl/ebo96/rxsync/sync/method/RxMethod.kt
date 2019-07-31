@@ -52,25 +52,14 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
      * returns onComplete callback which is bad because our 'onNext' method is responsible for
      * counting done methods and final result done method are wrong by that. We can wrap result and return 'null'.
      */
-    private fun mapToMethodResult(operation: Flowable<out T>): Flowable<MethodResult<out T>> {
-        return Flowable
-                .fromCallable {
-                    val operationIsEmpty = operation.isEmpty.onErrorReturn { false }.blockingGet()
-                    if (operationIsEmpty) {
-                        Flowable.just(MethodResult(this@RxMethod, null, payload, module))
-                    } else {
-                        operation.flatMap { methodResult ->
-                            Flowable.just(MethodResult(this@RxMethod, methodResult, payload, module))
-                        }
-                    }
-                }
-                .flatMap {
-                    it
-                }
-
-//        return operation.map { result ->
-//            MethodResult(this@RxMethod, result, payload, module)
-//        }
+    private fun mapToMethodResult(operation: Flowable<T>): Flowable<MethodResult<out T>> {
+        return operation.defaultIfEmpty(EmptyResult as T).map { result ->
+            if (result is EmptyResult) {
+                MethodResult(this@RxMethod, null, payload, module)
+            } else {
+                MethodResult(this@RxMethod, result, payload, module)
+            }
+        }
     }
 
     fun doSomethingWithResult(result: (T?) -> Unit): RxMethod<T> {
@@ -108,6 +97,8 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
     override fun getMethodId(): Int = id
 
     class Abort(message: String? = "") : Throwable(message)
+
+    object EmptyResult
 
     companion object {
 
