@@ -53,9 +53,23 @@ class RxMethod<T : Any> private constructor(val async: Boolean, private val retr
      * counting done methods and final result done method are wrong by that. We can wrap result and return 'null'.
      */
     private fun mapToMethodResult(operation: Flowable<out T>): Flowable<MethodResult<out T>> {
-        return operation.map { result ->
-            MethodResult(this@RxMethod, result, payload, module)
-        }
+        return Flowable
+                .unsafeCreate<Flowable<out MethodResult<out T>>> { subscriber ->
+                    val operationIsEmpty = operation.isEmpty.onErrorReturn { false }.blockingGet()
+                    val result = if (operationIsEmpty) {
+                        Flowable.just(MethodResult(this@RxMethod, null, payload, module))
+                    } else {
+                        operation.map { methodResult ->
+                            MethodResult(this@RxMethod, methodResult, payload, module)
+                        }
+                    }
+                    subscriber.onNext(result)
+                    subscriber.onComplete()
+                }
+                .flatMap { it }
+//        return operation.map { result ->
+//            MethodResult(this@RxMethod, result, payload, module)
+//        }
     }
 
     fun doSomethingWithResult(result: (T?) -> Unit): RxMethod<T> {
