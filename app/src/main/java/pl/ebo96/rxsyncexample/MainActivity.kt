@@ -1,7 +1,6 @@
 package pl.ebo96.rxsyncexample
 
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
@@ -23,7 +22,6 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                 .setResultListener(object : RxResultListener<Any> {
                     override fun onNextResult(data: MethodResult<out Any>) {
                         RestApi.results.add("${data.result}")
-                        Log.i(RxExecutor.TAG, "Result $data, on thread ${Thread.currentThread().name}")
                     }
 
                     override fun onNextUiResult(data: MethodResult<out Any>) {
@@ -39,7 +37,6 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                     }
 
                     override fun onModuleProgress(module: RxModule<*>, rxProgress: RxProgress) {
-                        Log.i(RxExecutor.TAG, "MODULE: $module PROGRESS: $rxProgress")
                     }
 
                     override fun onModulesRegistered(modules: PreparedModules) {

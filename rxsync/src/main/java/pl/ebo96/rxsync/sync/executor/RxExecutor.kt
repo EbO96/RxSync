@@ -117,13 +117,6 @@ class RxExecutor<T : Any> private constructor(
             return this
         }
 
-        /**
-         * Set number of threads used by modules. If module doesn't specify
-         * number of threads available for methods then this value will be used.
-         * If specified number of threads is smaller or equal 0 then default value will be used.
-         * Default value is specified by RxExecutor library and it depends on number of available processors
-         * @see RxDevice.defaultThreadsLimit
-         */
         fun setThreadsLimit(limit: Int): Builder<T> {
             if (limit > 0) {
                 maxThreads = limit
