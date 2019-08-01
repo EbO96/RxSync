@@ -51,7 +51,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                     elapsedTime?.dispose()
                     rxProgressListener?.completed(rxExecutorStateStore.getSummary())
                 }
-                .subscribe(rxExecutorStateStore.updateProgressAndExposeResultOnUi(rxResultListener), errorHandler)
+                .subscribe(rxExecutorStateStore.updateProgressAndExposeResult(rxResultListener), errorHandler)
 
         return CompositeDisposable(modules).also {
             if (elapsedTime != null) {

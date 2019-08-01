@@ -22,7 +22,7 @@ class RxModule<T : Any> private constructor(private val id: Int,
                                             private val moduleFactory: ModuleFactory<T>)
     : ModuleInfo<T>, Comparable<RxModule<T>> {
 
-    fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
+    internal fun prepareMethods(rxMethodEventHandler: RxMethodEventHandler?, rxExecutorStateStore: RxExecutorStateStore): Flowable<out MethodResult<out T>> {
         return rxMethodsExecutor.prepare(this@RxModule, rxMethodEventHandler, rxExecutorStateStore, maxThreads)
     }
 
