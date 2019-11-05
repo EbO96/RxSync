@@ -2,7 +2,6 @@ package pl.ebo96.rxsync.sync.executor
 
 import androidx.annotation.CallSuper
 import io.reactivex.Flowable
-import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
