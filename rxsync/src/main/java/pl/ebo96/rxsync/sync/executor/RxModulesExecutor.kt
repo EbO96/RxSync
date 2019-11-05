@@ -44,6 +44,11 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
         elapsedTimeCounter?.addToDisposable(compositeDisposable)
         elapsedTimeCounter?.start()
 
+        val onErrorDelegate = Consumer<Throwable> {
+            errorHandler.accept(it)
+            elapsedTimeCounter?.stop()
+        }
+
         val modules: Disposable = Flowable.concat(rxNonDeferredModules, rxDeferredModules)
                 .applyTimeout(timeout)
                 .listenForResults()
@@ -53,7 +58,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                     elapsedTimeCounter?.stop()
                     rxProgressListener?.completed(rxExecutorStateStore.getSummary())
                 }
-                .subscribe(rxExecutorStateStore.updateProgressAndExposeResult(rxResultListener), errorHandler)
+                .subscribe(rxExecutorStateStore.updateProgressAndExposeResult(rxResultListener), onErrorDelegate)
 
         return compositeDisposable.also {
             it.addAll(modules)
@@ -66,20 +71,24 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                 .fromCallable {
                     val moduleMethods = this@prepareModuleMethods.map { builder ->
 
-                        val rxMethodEventHandlerDelegate = object : RxMethodEventHandler {
-                            @CallSuper
-                            override fun onNewRxEvent(error: Throwable, rxMethodEventConsumer: RxMethodEventConsumer) {
-                                //Delegate
-                                val rxMethodEventDelegate = object : RxMethodEventConsumer(rxMethodEventConsumer.consumer) {
-                                    override fun onResponse(rxMethodEvent: RxMethodEvent) {
-                                        super.onResponse(rxMethodEvent)
-                                        elapsedTimeCounter?.restart()//Restart elapsed time counter
+                        val rxMethodEventHandlerDelegate: RxMethodEventHandler? = if (rxMethodEventHandler != null) {
+                            object : RxMethodEventHandler {
+                                @CallSuper
+                                override fun onNewRxEvent(error: Throwable, rxMethodEventConsumer: RxMethodEventConsumer) {
+                                    //Delegate
+                                    val rxMethodEventDelegate = object : RxMethodEventConsumer(rxMethodEventConsumer.consumer) {
+                                        override fun onResponse(rxMethodEvent: RxMethodEvent) {
+                                            super.onResponse(rxMethodEvent)
+                                            elapsedTimeCounter?.restart()//Restart elapsed time counter
+                                        }
                                     }
+                                    //Delegate to user
+                                    rxMethodEventHandler.onNewRxEvent(error, rxMethodEventDelegate)
+                                    elapsedTimeCounter?.stop()//Stop elapsed time counter
                                 }
-                                //Delegate to user
-                                rxMethodEventHandler?.onNewRxEvent(error, rxMethodEventDelegate)
-                                elapsedTimeCounter?.stop()//Stop elapsed time counter
                             }
+                        } else {
+                            null
                         }
 
                         val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)

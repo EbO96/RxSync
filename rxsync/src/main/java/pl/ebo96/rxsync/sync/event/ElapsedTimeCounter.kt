@@ -9,7 +9,8 @@ import java.util.concurrent.TimeUnit
 class ElapsedTimeCounter(private val elapsedTimeListener: RxElapsedTimeListener) {
 
     private val compositeDisposable = CompositeDisposable()
-    private var elapsed = 0L
+    var elapsed = 0L
+        private set
 
     fun start() {
         stop()
@@ -25,6 +26,7 @@ class ElapsedTimeCounter(private val elapsedTimeListener: RxElapsedTimeListener)
     }
 
     fun stop() {
+        elapsed = 0L
         compositeDisposable.clear()
     }
 

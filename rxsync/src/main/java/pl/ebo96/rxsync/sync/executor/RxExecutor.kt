@@ -62,7 +62,7 @@ class RxExecutor<T : Any> private constructor(
     class Builder<T : Any> {
 
         private val rxModulesBuilders = ArrayList<ModuleFactory<out T>>()
-        private lateinit var rxErrorListener: RxErrorListener
+        private var rxErrorListener: RxErrorListener? = null
         private var rxProgressListener: RxProgressListener? = null
         private var rxElapsedTimeListener: RxElapsedTimeListener? = null
         private var rxResultListener: RxResultListener<T>? = null
@@ -121,7 +121,9 @@ class RxExecutor<T : Any> private constructor(
 
         fun build(): RxExecutor<T> {
             val modulesExecutor = RxModulesExecutor(rxModulesBuilders, rxProgressListener, rxResultListener, rxMethodEventHandler, maxThreads)
-            return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, timeout)
+            val errorListener = this.rxErrorListener
+                    ?: throw Exception("RxErrorListener must be set")
+            return RxExecutor(modulesExecutor, errorListener, rxElapsedTimeListener, timeout)
         }
     }
 
