@@ -6,12 +6,12 @@ import io.reactivex.functions.Consumer
  * Callback where user can decide what do when error occurred.
  * @see RxMethodEvent
  */
-class RxMethodEventConsumer(private val consumer: Consumer<RxMethodEvent>) {
+open class RxMethodEventConsumer(val consumer: Consumer<RxMethodEvent>) {
 
     /**
      * Decide what do when error occurred.
      */
-    fun onResponse(rxMethodEvent: RxMethodEvent) {
+    open fun onResponse(rxMethodEvent: RxMethodEvent) {
         consumer.accept(rxMethodEvent)
     }
 }

@@ -1,5 +1,6 @@
 package pl.ebo96.rxsync.sync.executor
 
+import androidx.annotation.CallSuper
 import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -18,7 +19,10 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                                              private val rxMethodEventHandler: RxMethodEventHandler?,
                                              private val maxThreads: Int) {
 
-    fun execute(errorHandler: Consumer<Throwable>, chronometer: Observable<Long>?, timeout: Long, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
+    private var elapsedTimeCounter: ElapsedTimeCounter? = null
+
+    fun execute(errorHandler: Consumer<Throwable>, timeout: Long, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
+        val compositeDisposable = CompositeDisposable()
         val rxExecutorInfo = RxExecutorInfo()
         val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
 
@@ -36,11 +40,9 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
         val rxNonDeferredModules: Flowable<MethodResult<out T>> = nonDeferredModulesBuilders.prepareModuleMethods(rxExecutorStateStore, rxExecutorInfo)
         val rxDeferredModules: Flowable<MethodResult<out T>> = deferredModulesBuilders.prepareModuleMethods(rxExecutorStateStore, rxExecutorInfo)
 
-        val elapsedTime: Disposable? = chronometer
-                ?.doOnNext { seconds ->
-                    rxElapsedTimeListener?.elapsed(seconds)
-                }
-                ?.subscribe()
+        elapsedTimeCounter = rxElapsedTimeListener?.let { ElapsedTimeCounter(it) }
+        elapsedTimeCounter?.addToDisposable(compositeDisposable)
+        elapsedTimeCounter?.start()
 
         val modules: Disposable = Flowable.concat(rxNonDeferredModules, rxDeferredModules)
                 .applyTimeout(timeout)
@@ -48,15 +50,13 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(rxExecutorStateStore.reset())
                 .doOnTerminate {
-                    elapsedTime?.dispose()
+                    elapsedTimeCounter?.stop()
                     rxProgressListener?.completed(rxExecutorStateStore.getSummary())
                 }
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResult(rxResultListener), errorHandler)
 
-        return CompositeDisposable(modules).also {
-            if (elapsedTime != null) {
-                it.add(elapsedTime)
-            }
+        return compositeDisposable.also {
+            it.addAll(modules)
         }
     }
 
@@ -65,8 +65,25 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
         return Flowable
                 .fromCallable {
                     val moduleMethods = this@prepareModuleMethods.map { builder ->
+
+                        val rxMethodEventHandlerDelegate = object : RxMethodEventHandler {
+                            @CallSuper
+                            override fun onNewRxEvent(error: Throwable, rxMethodEventConsumer: RxMethodEventConsumer) {
+                                //Delegate
+                                val rxMethodEventDelegate = object : RxMethodEventConsumer(rxMethodEventConsumer.consumer) {
+                                    override fun onResponse(rxMethodEvent: RxMethodEvent) {
+                                        super.onResponse(rxMethodEvent)
+                                        elapsedTimeCounter?.restart()//Restart elapsed time counter
+                                    }
+                                }
+                                //Delegate to user
+                                rxMethodEventHandler?.onNewRxEvent(error, rxMethodEventDelegate)
+                                elapsedTimeCounter?.stop()//Stop elapsed time counter
+                            }
+                        }
+
                         val module = builder.createModuleAndGet(rxExecutorStateStore.generateModuleId(), maxThreads)
-                        val moduleMethods = module.prepareMethods(rxMethodEventHandler, rxExecutorStateStore)
+                        val moduleMethods = module.prepareMethods(rxMethodEventHandlerDelegate, rxExecutorStateStore)
                         rxExecutorInfo.saveModuleInfo(module)
                         moduleMethods
                     }

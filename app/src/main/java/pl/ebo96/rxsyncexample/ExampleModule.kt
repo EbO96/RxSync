@@ -9,7 +9,12 @@ class ExampleModule : ModuleFactory<Any>() {
 
     override fun build(builder: RxModule.Builder<Any>): RxModule<Any> {
         return builder
-                .register(RxMethod.create<Int>(true).registerOperation(Flowable.just(1)))
+                .asyncMethodsRetryAttempts(1)
+                .register(RxMethod.create<Int>(true).registerOperation(Flowable.fromCallable {
+                    Thread.sleep(5000)
+                    throw Exception("Error :)")
+                    1
+                }))
                 .register(RxMethod.create<Int>(true).registerOperation(Flowable.empty()))
                 .register(RxMethod.create<Int>(true).registerOperation(Flowable.just(3)))
                 .build()

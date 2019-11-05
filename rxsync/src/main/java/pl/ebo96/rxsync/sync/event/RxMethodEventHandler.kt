@@ -8,5 +8,5 @@ interface RxMethodEventHandler {
     /**
      *
      */
-    fun onNewRxEvent(error: Throwable, rxMethodEvent: RxMethodEventConsumer)
+    fun onNewRxEvent(error: Throwable, rxMethodEventConsumer: RxMethodEventConsumer)
 }

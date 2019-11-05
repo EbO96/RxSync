@@ -23,7 +23,6 @@ class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
         private val rxErrorListener: RxErrorListener,
         private val rxElapsedTimeListener: RxElapsedTimeListener?,
-        private val chronometer: Observable<Long>?,
         private val timeout: Long) {
 
     private var compositeDisposable = CompositeDisposable()
@@ -39,7 +38,7 @@ class RxExecutor<T : Any> private constructor(
      */
     fun start() {
         cancel()
-        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, chronometer, timeout, rxElapsedTimeListener))
+        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, timeout, rxElapsedTimeListener))
     }
 
     /**
@@ -69,7 +68,6 @@ class RxExecutor<T : Any> private constructor(
         private var rxResultListener: RxResultListener<T>? = null
         private var rxMethodEventHandler: RxMethodEventHandler? = null
         private var maxThreads = RxDevice.defaultThreadsLimit
-        private var chronometer: Observable<Long>? = null
         private var timeout: Long = 0
 
         fun register(rxModule: ModuleFactory<out T>): Builder<T> {
@@ -101,9 +99,6 @@ class RxExecutor<T : Any> private constructor(
 
         fun setElapsedTimeListener(rxElapsedTimeListener: RxElapsedTimeListener): Builder<T> {
             this.rxElapsedTimeListener = rxElapsedTimeListener
-            chronometer = Observable.interval(1, TimeUnit.SECONDS)
-                    .takeUntil { false }
-                    .subscribeOn(AndroidSchedulers.mainThread())
             return this
         }
 
@@ -126,7 +121,7 @@ class RxExecutor<T : Any> private constructor(
 
         fun build(): RxExecutor<T> {
             val modulesExecutor = RxModulesExecutor(rxModulesBuilders, rxProgressListener, rxResultListener, rxMethodEventHandler, maxThreads)
-            return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, chronometer, timeout)
+            return RxExecutor(modulesExecutor, rxErrorListener, rxElapsedTimeListener, timeout)
         }
     }
 

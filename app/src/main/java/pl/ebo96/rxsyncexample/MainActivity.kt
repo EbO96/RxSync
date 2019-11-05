@@ -72,18 +72,18 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
         }
     }
 
-    override fun onNewRxEvent(error: Throwable, rxMethodEvent: RxMethodEventConsumer) {
+    override fun onNewRxEvent(error: Throwable, rxMethodEventConsumer: RxMethodEventConsumer) {
         setResultOnTextView("EVENT -> $error on thread -> ${Thread.currentThread().name}")
         retryButton.setOnClickListener {
-            rxMethodEvent.onResponse(RxMethodEvent.RETRY)
+            rxMethodEventConsumer.onResponse(RxMethodEvent.RETRY)
         }
 
         nextButton.setOnClickListener {
-            rxMethodEvent.onResponse(RxMethodEvent.NEXT)
+            rxMethodEventConsumer.onResponse(RxMethodEvent.NEXT)
         }
 
         cancelButton.setOnClickListener {
-            rxMethodEvent.onResponse(RxMethodEvent.CANCEL)
+            rxMethodEventConsumer.onResponse(RxMethodEvent.CANCEL)
         }
     }
 
