@@ -2,6 +2,7 @@ package pl.ebo96.rxsyncexample
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import kotlinx.android.synthetic.main.activity_main.*
 import pl.ebo96.rxsync.sync.event.*
 import pl.ebo96.rxsync.sync.executor.RxExecutor
@@ -56,6 +57,11 @@ class MainActivity : AppCompatActivity(), RxMethodEventHandler {
                 .setErrorListener(object : RxErrorListener {
                     override fun onError(error: Throwable) {
                         setResultOnTextView("$error on thread -> ${Thread.currentThread().name}")
+                    }
+                })
+                .setRxScreen(object : RxActivityScreen {
+                    override fun getSubject(): AppCompatActivity? {
+                        return this@MainActivity
                     }
                 })
                 .setEventHandler(this)

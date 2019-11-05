@@ -1,7 +1,6 @@
 package pl.ebo96.rxsync.sync.executor
 
 import io.reactivex.Completable
-import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.Consumer
@@ -9,7 +8,6 @@ import io.reactivex.plugins.RxJavaPlugins
 import pl.ebo96.rxsync.sync.RxDevice
 import pl.ebo96.rxsync.sync.builder.ModuleFactory
 import pl.ebo96.rxsync.sync.event.*
-import java.util.concurrent.TimeUnit
 
 /**
  * This class is responsible for starting and cancelling execution of registered modules.
@@ -23,6 +21,7 @@ class RxExecutor<T : Any> private constructor(
         private val rxModulesExecutor: RxModulesExecutor<T>,
         private val rxErrorListener: RxErrorListener,
         private val rxElapsedTimeListener: RxElapsedTimeListener?,
+        private val rxScreen: RxScreen<*>?,
         private val timeout: Long) {
 
     private var compositeDisposable = CompositeDisposable()
@@ -38,7 +37,7 @@ class RxExecutor<T : Any> private constructor(
      */
     fun start() {
         cancel()
-        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, timeout, rxElapsedTimeListener))
+        compositeDisposable.add(rxModulesExecutor.execute(onUiThreadErrorHandler, timeout, rxScreen, rxElapsedTimeListener))
     }
 
     /**
@@ -65,6 +64,7 @@ class RxExecutor<T : Any> private constructor(
         private var rxErrorListener: RxErrorListener? = null
         private var rxProgressListener: RxProgressListener? = null
         private var rxElapsedTimeListener: RxElapsedTimeListener? = null
+        private var rxScreen: RxScreen<*>? = null
         private var rxResultListener: RxResultListener<T>? = null
         private var rxMethodEventHandler: RxMethodEventHandler? = null
         private var maxThreads = RxDevice.defaultThreadsLimit
@@ -119,11 +119,16 @@ class RxExecutor<T : Any> private constructor(
             return this
         }
 
+        fun setRxScreen(rxScreen: RxScreen<*>): Builder<T> {
+            this.rxScreen = rxScreen
+            return this
+        }
+
         fun build(): RxExecutor<T> {
             val modulesExecutor = RxModulesExecutor(rxModulesBuilders, rxProgressListener, rxResultListener, rxMethodEventHandler, maxThreads)
             val errorListener = this.rxErrorListener
                     ?: throw Exception("RxErrorListener must be set")
-            return RxExecutor(modulesExecutor, errorListener, rxElapsedTimeListener, timeout)
+            return RxExecutor(modulesExecutor, errorListener, rxElapsedTimeListener, rxScreen, timeout)
         }
     }
 

@@ -11,7 +11,7 @@ class ExampleModule : ModuleFactory<Any>() {
         return builder
                 .asyncMethodsRetryAttempts(1)
                 .register(RxMethod.create<Int>(true).registerOperation(Flowable.fromCallable {
-                    Thread.sleep(5000)
+                    Thread.sleep(8000)
                     throw Exception("Error :)")
                     1
                 }))

@@ -19,8 +19,9 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                                              private val maxThreads: Int) {
 
     private var elapsedTimeCounter: ElapsedTimeCounter? = null
+    private var screenManager: ScreenManager? = null
 
-    fun execute(errorHandler: Consumer<Throwable>, timeout: Long, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
+    fun execute(errorHandler: Consumer<Throwable>, timeout: Long, rxScreen: RxScreen<*>?, rxElapsedTimeListener: RxElapsedTimeListener?): CompositeDisposable {
         val compositeDisposable = CompositeDisposable()
         val rxExecutorInfo = RxExecutorInfo()
         val rxExecutorStateStore = RxExecutorStateStore(rxProgressListener, rxExecutorInfo)
@@ -43,9 +44,13 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
         elapsedTimeCounter?.addToDisposable(compositeDisposable)
         elapsedTimeCounter?.start()
 
+        screenManager = rxScreen?.let { ScreenManager(it) }
+        screenManager?.keepAwake() //Keep screen on when sync running
+
         val onErrorDelegate = Consumer<Throwable> {
             errorHandler.accept(it)
             elapsedTimeCounter?.stop()
+            screenManager?.letSleep()
         }
 
         val modules: Disposable = Flowable.concat(rxNonDeferredModules, rxDeferredModules)
@@ -55,6 +60,7 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                 .doOnSubscribe(rxExecutorStateStore.reset())
                 .doOnTerminate {
                     elapsedTimeCounter?.stop()
+                    screenManager?.letSleep()
                     rxProgressListener?.completed(rxExecutorStateStore.getSummary())
                 }
                 .subscribe(rxExecutorStateStore.updateProgressAndExposeResult(rxResultListener), onErrorDelegate)
@@ -79,11 +85,13 @@ class RxModulesExecutor<T : Any> constructor(private val rxModulesBuilders: Arra
                                         override fun onResponse(rxMethodEvent: RxMethodEvent) {
                                             super.onResponse(rxMethodEvent)
                                             elapsedTimeCounter?.restart()//Restart elapsed time counter
+                                            screenManager?.keepAwake()//Keep screen awake after user decision
                                         }
                                     }
                                     //Delegate to user
                                     rxMethodEventHandler.onNewRxEvent(error, rxMethodEventDelegate)
                                     elapsedTimeCounter?.stop()//Stop elapsed time counter
+                                    screenManager?.letSleep()//Let screen sleep when waiting for user decision
                                 }
                             }
                         } else {
